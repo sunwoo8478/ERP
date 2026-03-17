@@ -2,11 +2,11 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/payroll_db
     username: payroll_user
-    password: 1234
+    password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
@@ -15,9 +15,21 @@ spring:
   sql:
     init:
       mode: never
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 server:
-  port: 8080
+  port: 18080
   servlet:
     encoding:
       charset: UTF-8
@@ -27,3 +39,8 @@ logging:
   level:
     com.payroll: DEBUG
     org.hibernate.SQL: DEBUG
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-this-development-secret-before-use}
+    expiration-ms: 86400000
