@@ -8,7 +8,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 @Entity
-@Table(name = "employee")
+@Table(name = "직원")
 class Employee(
     @Id
     @Column(name = "employee_id", columnDefinition = "uuid")
@@ -45,5 +45,23 @@ class Employee(
     var hireDate: LocalDate,
 
     @Column(name = "status", nullable = false, length = 20)
-    var status: String = "ACTIVE"
+    var status: String = "ACTIVE",
+
+    @Column(name = "has_own_car", nullable = false)
+    var hasOwnCar: Boolean = false,
+
+    @Column(name = "email", length = 200)
+    var email: String? = null,
+
+    @Column(name = "bank_name", length = 50)
+    var bankName: String? = null,
+
+    @Column(name = "bank_account", length = 50)
+    var bankAccount: String? = null,
+
+    @Column(name = "resident_no", length = 200)
+    var residentNo: String? = null,
+
+    @Column(name = "leave_date")
+    var leaveDate: LocalDate? = null
 )

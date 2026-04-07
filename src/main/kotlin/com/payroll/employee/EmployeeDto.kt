@@ -6,6 +6,27 @@ import jakarta.validation.constraints.NotNull
 import java.time.LocalDate
 import java.util.UUID
 
+data class StepIncrementRequest(
+    val targetYear: Int,
+    val incrementAll: Boolean = true,
+    val employeeIds: List<UUID>? = null
+)
+
+data class StepIncrementDetail(
+    val employeeNo: String,
+    val fullName: String,
+    val fromStep: Int,
+    val toStep: Int,
+    val reason: String
+)
+
+data class StepIncrementResult(
+    val totalTarget: Int,
+    val incremented: Int,
+    val skipped: Int,
+    val details: List<StepIncrementDetail>
+)
+
 data class EmployeeCreateRequest(
     @field:NotNull val orgUnitId: UUID,
     @field:NotNull val jobGradeId: UUID,
@@ -14,7 +35,13 @@ data class EmployeeCreateRequest(
     val employmentType: String = "FULL_TIME",
     @field:Min(1) val currentStep: Int = 1,
     @field:Min(0) val dependentCount: Int = 0,
-    @field:NotNull val hireDate: LocalDate
+    @field:NotNull val hireDate: LocalDate,
+    val hasOwnCar: Boolean = false,
+    val email: String? = null,
+    val bankName: String? = null,
+    val bankAccount: String? = null,
+    val residentNo: String? = null,
+    val leaveDate: LocalDate? = null
 )
 
 data class EmployeeUpdateRequest(
@@ -24,7 +51,13 @@ data class EmployeeUpdateRequest(
     val employmentType: String,
     @field:Min(1) val currentStep: Int,
     @field:Min(0) val dependentCount: Int,
-    @field:NotBlank val status: String
+    @field:NotBlank val status: String,
+    val hasOwnCar: Boolean = false,
+    val email: String? = null,
+    val bankName: String? = null,
+    val bankAccount: String? = null,
+    val residentNo: String? = null,
+    val leaveDate: LocalDate? = null
 )
 
 data class EmployeeResponse(
@@ -40,7 +73,13 @@ data class EmployeeResponse(
     val currentStep: Int,
     val dependentCount: Int,
     val hireDate: LocalDate,
-    val status: String
+    val status: String,
+    val hasOwnCar: Boolean,
+    val email: String?,
+    val bankName: String?,
+    val bankAccount: String?,
+    val residentNo: String?,
+    val leaveDate: LocalDate?
 ) {
     companion object {
         fun from(e: Employee) = EmployeeResponse(
@@ -56,7 +95,13 @@ data class EmployeeResponse(
             currentStep = e.currentStep,
             dependentCount = e.dependentCount,
             hireDate = e.hireDate,
-            status = e.status
+            status = e.status,
+            hasOwnCar = e.hasOwnCar,
+            email = e.email,
+            bankName = e.bankName,
+            bankAccount = e.bankAccount,
+            residentNo = e.residentNo,
+            leaveDate = e.leaveDate
         )
     }
 }

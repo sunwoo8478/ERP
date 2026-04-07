@@ -36,4 +36,11 @@ class EmployeeController(private val employeeService: EmployeeService) {
         @Valid @RequestBody request: EmployeeUpdateRequest
     ): ApiResponse<EmployeeResponse> =
         ApiResponse.ok(employeeService.update(companyId, employeeId, request), "직원 정보가 수정되었습니다.")
+
+    @PostMapping("/step-increment")
+    fun stepIncrement(
+        @PathVariable companyId: UUID,
+        @RequestBody request: StepIncrementRequest
+    ): ApiResponse<StepIncrementResult> =
+        ApiResponse.ok(employeeService.stepIncrement(companyId, request), "호봉 승급 처리가 완료되었습니다.")
 }
