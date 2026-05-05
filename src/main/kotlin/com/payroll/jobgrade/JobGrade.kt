@@ -5,7 +5,7 @@ import jakarta.persistence.*
 import java.util.UUID
 
 @Entity
-@Table(name = "job_grade")
+@Table(name = "직급")
 class JobGrade(
     @Id
     @Column(name = "job_grade_id", columnDefinition = "uuid")

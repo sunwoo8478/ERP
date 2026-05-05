@@ -5,7 +5,7 @@ import jakarta.persistence.*
 import java.util.UUID
 
 @Entity
-@Table(name = "org_unit")
+@Table(name = "부서")
 class OrgUnit(
     @Id
     @Column(name = "org_unit_id", columnDefinition = "uuid")
