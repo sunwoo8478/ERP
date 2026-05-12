@@ -7,12 +7,14 @@ import java.util.UUID
 data class PayrollConfigCreateRequest(
     @field:NotNull val applyYear: Int,
     val mealNonTaxable: BigDecimal = BigDecimal("200000"),
-    val transportNonTaxable: BigDecimal = BigDecimal("200000")
+    val transportNonTaxable: BigDecimal = BigDecimal("200000"),
+    val pensionMaxBase: BigDecimal = BigDecimal("6170000")
 )
 
 data class PayrollConfigUpdateRequest(
     val mealNonTaxable: BigDecimal,
-    val transportNonTaxable: BigDecimal
+    val transportNonTaxable: BigDecimal,
+    val pensionMaxBase: BigDecimal
 )
 
 data class PayrollConfigResponse(
@@ -20,7 +22,8 @@ data class PayrollConfigResponse(
     val companyId: UUID,
     val applyYear: Int,
     val mealNonTaxable: BigDecimal,
-    val transportNonTaxable: BigDecimal
+    val transportNonTaxable: BigDecimal,
+    val pensionMaxBase: BigDecimal
 ) {
     companion object {
         fun from(c: PayrollConfig) = PayrollConfigResponse(
@@ -28,7 +31,8 @@ data class PayrollConfigResponse(
             companyId = c.company.companyId,
             applyYear = c.applyYear,
             mealNonTaxable = c.mealNonTaxable,
-            transportNonTaxable = c.transportNonTaxable
+            transportNonTaxable = c.transportNonTaxable,
+            pensionMaxBase = c.pensionMaxBase
         )
     }
 }

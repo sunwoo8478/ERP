@@ -3,6 +3,7 @@ package com.payroll.insurancerate
 import com.payroll.company.CompanyRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.util.UUID
 
 @Service
@@ -22,6 +23,11 @@ class InsuranceRateService(
     fun create(companyId: UUID, request: InsuranceRateCreateRequest): InsuranceRateResponse {
         val company = companyRepository.findById(companyId)
             .orElseThrow { NoSuchElementException("고객사를 찾을 수 없습니다. id=$companyId") }
+        val currentYear = LocalDate.now().year
+        if (request.applyYear < 2000 || request.applyYear > currentYear + 1)
+            throw IllegalArgumentException("적용 연도(${request.applyYear})는 2000년 ~ ${currentYear + 1}년 사이여야 합니다.")
+        if (request.healthEmployee <= java.math.BigDecimal.ZERO || request.pensionEmployee <= java.math.BigDecimal.ZERO)
+            throw IllegalArgumentException("보험요율은 0보다 커야 합니다.")
         if (insuranceRateRepository.findByCompanyAndApplyYear(company, request.applyYear).isPresent) {
             throw IllegalArgumentException("이미 ${request.applyYear}년 보험요율이 등록되어 있습니다.")
         }

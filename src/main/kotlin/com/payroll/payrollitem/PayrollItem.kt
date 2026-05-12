@@ -6,7 +6,7 @@ import java.math.BigDecimal
 import java.util.UUID
 
 @Entity
-@Table(name = "payroll_item")
+@Table(name = "급여항목")
 class PayrollItem(
     @Id
     @Column(name = "payroll_item_id", columnDefinition = "uuid")

@@ -6,8 +6,7 @@ import java.math.BigDecimal
 import java.util.UUID
 
 @Entity
-@Table(
-    name = "insurance_rate",
+@Table(name = "보험요율",
     uniqueConstraints = [UniqueConstraint(columnNames = ["company_id", "apply_year"])]
 )
 class InsuranceRate(

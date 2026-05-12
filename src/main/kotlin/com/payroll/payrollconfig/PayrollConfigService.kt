@@ -39,7 +39,8 @@ class PayrollConfigService(
             company = company,
             applyYear = request.applyYear,
             mealNonTaxable = request.mealNonTaxable,
-            transportNonTaxable = request.transportNonTaxable
+            transportNonTaxable = request.transportNonTaxable,
+            pensionMaxBase = request.pensionMaxBase
         )
         return PayrollConfigResponse.from(payrollConfigRepository.save(config))
     }
@@ -51,6 +52,7 @@ class PayrollConfigService(
         if (config.company.companyId != companyId) throw IllegalArgumentException("접근 권한이 없습니다.")
         config.mealNonTaxable = request.mealNonTaxable
         config.transportNonTaxable = request.transportNonTaxable
+        config.pensionMaxBase = request.pensionMaxBase
         return PayrollConfigResponse.from(config)
     }
 
@@ -62,7 +64,16 @@ class PayrollConfigService(
         return Pair(config.mealNonTaxable, config.transportNonTaxable)
     }
 
+    // Called by PayrollCalculationService — returns default 6,170,000 if no config registered
+    fun getPensionMaxBase(companyId: UUID, year: Int): BigDecimal {
+        val company = companyRepository.findById(companyId).orElse(null) ?: return DEFAULT_PENSION_MAX_BASE
+        return payrollConfigRepository.findByCompanyAndApplyYear(company, year)
+            .map { it.pensionMaxBase }
+            .orElse(DEFAULT_PENSION_MAX_BASE)
+    }
+
     companion object {
         val DEFAULT = Pair(BigDecimal("200000"), BigDecimal("200000"))
+        val DEFAULT_PENSION_MAX_BASE = BigDecimal("6170000")
     }
 }
