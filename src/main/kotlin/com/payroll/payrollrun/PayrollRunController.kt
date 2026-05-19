@@ -1,6 +1,8 @@
 package com.payroll.payrollrun
 
 import com.payroll.common.ApiResponse
+import com.payroll.employee.StepIncrementRequest
+import com.payroll.employee.StepIncrementResult
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
@@ -58,10 +60,31 @@ class PayrollRunController(private val payrollRunService: PayrollRunService) {
     ): ApiResponse<PayrollRunResponse> =
         ApiResponse.ok(payrollRunService.update(companyId, payrollRunId, request), "급여실행이 수정되었습니다.")
 
+    @PostMapping("/{payrollRunId}/reset")
+    fun reset(
+        @PathVariable companyId: UUID,
+        @PathVariable payrollRunId: UUID
+    ): ApiResponse<PayrollRunResponse> =
+        ApiResponse.ok(payrollRunService.reset(companyId, payrollRunId), "급여 실행이 초기화되었습니다.")
+
+    @GetMapping("/{payrollRunId}/transfer-file")
+    fun transferFile(
+        @PathVariable companyId: UUID,
+        @PathVariable payrollRunId: UUID,
+        response: jakarta.servlet.http.HttpServletResponse
+    ) = payrollRunService.writeTransferFile(companyId, payrollRunId, response)
+
     @DeleteMapping("/{payrollRunId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(
         @PathVariable companyId: UUID,
         @PathVariable payrollRunId: UUID
     ) = payrollRunService.delete(companyId, payrollRunId)
+
+    @PostMapping("/step-increment")
+    fun stepIncrement(
+        @PathVariable companyId: UUID,
+        @RequestBody request: StepIncrementRequest
+    ): ApiResponse<StepIncrementResult> =
+        ApiResponse.ok(payrollRunService.stepIncrement(companyId, request), "호봉 승급 처리가 완료되었습니다.")
 }

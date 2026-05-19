@@ -6,7 +6,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 @Entity
-@Table(name = "payroll_run")
+@Table(name = "급여실행")
 class PayrollRun(
     @Id
     @Column(name = "payroll_run_id", columnDefinition = "uuid")
