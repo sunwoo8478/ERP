@@ -3,6 +3,7 @@ package com.payroll.payrollslip
 import com.payroll.common.ApiResponse
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
+import java.time.LocalDate
 
 @RestController
 class PayrollSlipController(private val payrollSlipService: PayrollSlipService) {
@@ -22,4 +23,20 @@ class PayrollSlipController(private val payrollSlipService: PayrollSlipService) 
         @PathVariable payrollSlipId: UUID
     ): ApiResponse<PayrollSlipDetailResponse> =
         ApiResponse.ok(payrollSlipService.getSlipDetail(companyId, payrollSlipId))
+
+    // 명세서 발송 처리 (발송 상태 SENT 로 업데이트)
+    @PostMapping("/api/companies/{companyId}/payroll-runs/{payrollRunId}/slips/send")
+    fun sendSlips(
+        @PathVariable companyId: UUID,
+        @PathVariable payrollRunId: UUID
+    ): ApiResponse<Map<String, Int>> =
+        ApiResponse.ok(payrollSlipService.markAsSent(companyId, payrollRunId), "명세서 발송이 완료되었습니다.")
+
+    // 급여 대장 (전 직원 집계)
+    @GetMapping("/api/companies/{companyId}/payroll-runs/{payrollRunId}/ledger")
+    fun getLedger(
+        @PathVariable companyId: UUID,
+        @PathVariable payrollRunId: UUID
+    ): ApiResponse<PayrollLedgerResponse> =
+        ApiResponse.ok(payrollSlipService.getLedger(companyId, payrollRunId))
 }

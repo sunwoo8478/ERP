@@ -7,7 +7,7 @@ import java.math.BigDecimal
 import java.util.UUID
 
 @Entity
-@Table(name = "payroll_slip")
+@Table(name = "급여명세")
 class PayrollSlip(
     @Id
     @Column(name = "payroll_slip_id", columnDefinition = "uuid")
