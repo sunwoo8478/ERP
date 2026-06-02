@@ -5,6 +5,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -28,8 +29,16 @@ class GlobalExceptionHandler {
         return ApiResponse.fail(message)
     }
 
+    // 정적 리소스 없음 → 404 그대로 반환 (Spring이 처리하도록 위임)
+    @ExceptionHandler(NoResourceFoundException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleNoResource(e: NoResourceFoundException) =
+        ApiResponse.fail<Nothing>("리소스를 찾을 수 없습니다: ${e.resourcePath}")
+
     @ExceptionHandler(Exception::class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    fun handleGeneral(e: Exception) =
-        ApiResponse.fail<Nothing>("서버 오류: ${e.message}")
+    fun handleGeneral(e: Exception): ApiResponse<Nothing> {
+        // NoResourceFoundException은 위에서 처리됨 — 여기선 진짜 서버 오류만
+        return ApiResponse.fail("서버 오류: ${e.message}")
+    }
 }

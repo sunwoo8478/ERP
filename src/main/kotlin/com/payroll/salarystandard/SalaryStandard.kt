@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 @Entity
-@Table(name = "salary_standard")
+@Table(name = "급여기준")
 class SalaryStandard(
     @Id
     @Column(name = "salary_standard_id", columnDefinition = "uuid")
