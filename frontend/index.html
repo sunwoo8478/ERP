@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1" />
+  <title>페이핏 ERP — 급여 아웃소싱 관리 콘솔</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #slip-printable, #slip-printable * { visibility: visible; }
+      #slip-printable { position: absolute; left: 0; top: 0; width: 100%; }
+      .slip-actions { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+  <script src="/icons.js"></script>
+  <script src="/data.js"></script>
+  <script src="/shell.js"></script>
+  <script src="/pages.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
