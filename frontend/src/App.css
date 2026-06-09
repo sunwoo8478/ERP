@@ -179,6 +179,16 @@ h1 {
 .btn-view:hover { background: #d1d3d4; }
 .btn-paid { background: #d1ecf1; color: #0c5460; }
 .btn-paid:hover { background: #b8e4ed; }
+.btn-danger { background: #f8d7da; color: #721c24; }
+.btn-danger:hover { background: #f5c6cb; }
+
+.btn-action.btn-view,
+.btn-action.btn-view:visited {
+  color: #383d41;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
 
 .modal-overlay {
   position: fixed;
@@ -212,7 +222,8 @@ h1 {
 }
 
 .form-row label {
-  width: 50px;
+  width: 70px;
+  min-width: 70px;
   font-weight: 500;
   color: #636e72;
   font-size: 13px;

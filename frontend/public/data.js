@@ -1,7 +1,19 @@
 // =========================================================
 // Data layer — fetches from real backend API (/api/...)
-// Vite proxy forwards /api → localhost:8080
+// Vite proxy forwards /api → localhost:18080
 // =========================================================
+
+// ── JWT 인증 헬퍼 ──────────────────────────────────────────
+// 메모리 전용 인증 — 새로고침 시 자동 로그아웃 (DB 데이터는 유지)
+const AUTH = {
+  token: null,
+  user:  null,
+  setToken(token, user) { this.token = token; this.user = user; },
+  clear() { this.token = null; this.user = null; },
+  isLoggedIn() { return !!this.token; },
+};
+try { localStorage.removeItem('erp_token'); localStorage.removeItem('erp_user'); } catch(e){}
+window.AUTH = AUTH;
 
 const MOCK = (() => {
   const state = {
@@ -19,23 +31,41 @@ const MOCK = (() => {
     empTypes: ["정규직", "계약직", "파견직"],
   };
 
-  async function apiFetch(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`API error ${res.status}: ${url}`);
+  async function apiFetch(url, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (AUTH.token) headers['Authorization'] = 'Bearer ' + AUTH.token;
+    let res;
+    try {
+      res = await fetch(url, { ...opts, headers });
+    } catch (networkErr) {
+      console.warn('[apiFetch] 네트워크 오류:', url, networkErr.message);
+      return null;
+    }
+    if (res.status === 401) {
+      AUTH.clear();
+      if (typeof showLoginScreen === 'function') showLoginScreen();
+      throw new Error('인증이 필요합니다. 다시 로그인해 주세요.');
+    }
+    if (res.status === 404) {
+      console.warn('[apiFetch] 404:', url);
+      return null;
+    }
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`;
+      try { const j = await res.json(); msg = j.message || msg; } catch {}
+      throw new Error(msg);
+    }
     const json = await res.json();
     return json.data;
   }
 
   async function init() {
     // 1. Fetch companies
-    state.companies = await apiFetch("/api/companies");
+    const companies = await apiFetch("/api/companies");
+    if (!companies) return; // 404 등으로 빈 데이터
+    state.companies = companies;
 
-    // Add fields that the UI expects but API doesn't return
     state.companies.forEach(c => {
-      c.bizNo    = "***-**-*****";
-      c.ceo      = "—";
-      c.industry = "—";
-      c.since    = null;
       c.headcount = 0;
     });
 
@@ -64,23 +94,23 @@ const MOCK = (() => {
 
   async function reloadRuns(companyId) {
     const runs = await apiFetch(`/api/companies/${companyId}/payroll-runs`);
+    if (runs === null) return; // 401 처리됨
     state.runsByCompany[companyId] = runs || [];
     (runs || []).forEach(r => { delete state._slipsByRun[r.payrollRunId]; });
   }
 
   async function reloadCompanies() {
-    state.companies = await apiFetch("/api/companies");
+    const companies = await apiFetch("/api/companies");
+    if (companies === null) return;
+    state.companies = companies;
     state.companies.forEach(c => {
-      c.bizNo    = "***-**-*****";
-      c.ceo      = "—";
-      c.industry = "—";
-      c.since    = null;
       c.headcount = (state.employeesByCompany[c.companyId] || []).filter(e => e.status === "ACTIVE").length;
     });
   }
 
   async function reloadEmployees(companyId) {
     const emps = await apiFetch(`/api/companies/${companyId}/employees`);
+    if (emps === null) return;
     state.employeesByCompany[companyId] = emps || [];
     const c = state.companies.find(x => x.companyId === companyId);
     if (c) c.headcount = (emps || []).filter(e => e.status === "ACTIVE").length;
@@ -162,17 +192,68 @@ const MOCK = (() => {
 
   function clearPayrollConfigCache(companyId) { delete state._payrollConfigsByCompany[companyId]; }
 
+  // ── Leave / Attendance / Allowance / Tax fetch functions ──
+
+  async function fetchLeaveTypes(companyId) {
+    const data = await apiFetch(`/api/companies/${companyId}/leave-types`);
+    return data || [];
+  }
+
+  async function fetchLeaveRequests(companyId, year, month) {
+    const data = await apiFetch(`/api/companies/${companyId}/leave-requests?year=${year}&month=${month}`);
+    return data || [];
+  }
+
+  async function fetchOvertime(companyId, year, month) {
+    const data = await apiFetch(`/api/companies/${companyId}/overtime?year=${year}&month=${month}`);
+    return data || [];
+  }
+
+  async function fetchEmploymentHistory(employeeId) {
+    const data = await apiFetch(`/api/employees/${employeeId}/employment-history`);
+    return data || [];
+  }
+
+  async function fetchAllowanceItems(companyId) {
+    const data = await apiFetch(`/api/companies/${companyId}/allowance-items`);
+    return data || [];
+  }
+
+  async function fetchWithholdingTax(companyId, year, month) {
+    const data = await apiFetch(`/api/companies/${companyId}/reports/withholding-tax?year=${year}&month=${month}`);
+    return data || null;
+  }
+
+  async function fetchYearEnd(companyId, year) {
+    const data = await apiFetch(`/api/companies/${companyId}/reports/year-end?year=${year}`);
+    return data || null;
+  }
+
+  async function fetchLaborCostTrend(companyId, year) {
+    const data = await apiFetch(`/api/companies/${companyId}/reports/labor-cost/trend?year=${year}`);
+    return data || [];
+  }
+
+  async function fetchLaborCostByDept(companyId, year, month) {
+    const data = await apiFetch(`/api/companies/${companyId}/reports/labor-cost/by-dept?year=${year}&month=${month}`);
+    return data || [];
+  }
+
   function getCompanyDetail(companyId) {
     const c = state.companies.find(x => x.companyId === companyId);
     if (!c) return null;
     return {
       ...c,
-      address:              "서울특별시 강남구 테헤란로 152, 14층",
-      phone:                "02-555-1234",
-      payrollContact:       "담당자 정보 없음",
-      payrollContactEmail:  "—",
-      bankName:             "신한은행",
-      bankAccount:          "***-***-***",
+      address:             c.address             || "—",
+      phone:               c.phone               || "—",
+      payrollContact:      c.payrollContact      || "—",
+      payrollContactEmail: c.payrollContactEmail || "—",
+      bankName:            c.bankName            || "—",
+      bankAccount:         c.bankAccount         || "—",
+      bizNo:               c.bizNo               || "—",
+      ceo:                 c.ceo                 || "—",
+      industry:            c.industry            || "—",
+      since:               c.sinceDate           || null,
     };
   }
 
@@ -188,7 +269,8 @@ const MOCK = (() => {
     apiFetch(`/api/companies/${companyId}/payroll-runs/${runId}/slips`)
       .then(slips => {
         state._slipsByRun[runId] = slips || [];
-        if ((slips || []).length > 0 && typeof renderApp === "function") renderApp();
+        // renderApp 재호출 제거 — 렌더 중 재진입으로 인한 RangeError 방지
+        // 슬립 로드 완료 후 화면 갱신이 필요하면 호출 측에서 직접 처리
       })
       .catch(err => console.warn("Slip fetch failed:", err));
 
@@ -230,6 +312,15 @@ const MOCK = (() => {
     fetchPayrollConfigs,
     reloadPayrollConfigs,
     clearPayrollConfigCache,
+    fetchLeaveTypes,
+    fetchLeaveRequests,
+    fetchOvertime,
+    fetchEmploymentHistory,
+    fetchAllowanceItems,
+    fetchWithholdingTax,
+    fetchYearEnd,
+    fetchLaborCostTrend,
+    fetchLaborCostByDept,
     getCompanyDetail,
     getSlipsForRun,
     clearSlipCache,

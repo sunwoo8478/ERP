@@ -15,164 +15,36 @@ function tbtn(label, iconName, attrs = "", cls = "") {
 // DASHBOARD
 // =========================================================
 PAGES["dashboard"] = (route, tab) => {
-  tab.state = tab.state || { ym: "2026-5" };
-  const [Y, M] = tab.state.ym.split("-").map(Number);
   const companies = MOCK.companies;
-  const activeCount = companies.filter(c => c.status === "ACTIVE").length;
-  const totalEmps = companies.reduce((s, c) => s + (MOCK.employeesByCompany[c.companyId]?.filter(e => e.status === "ACTIVE").length || 0), 0);
-  let runsTotal = 0, runsDone = 0, totalCost = 0;
-  const currentRows = [];
-  companies.forEach(c => {
-    const runs = MOCK.runsByCompany[c.companyId] || [];
-    const r = runs.find(x => x.payrollYear === Y && x.payrollMonth === M);
-    if (r) {
-      runsTotal++;
-      if (r.status === "APPROVED" || r.status === "PAID") runsDone++;
-      const slips = MOCK.getSlipsForRun(c.companyId, r.payrollRunId);
-      const net = slips.reduce((s, x) => s + x.netAmount, 0);
-      totalCost += net;
-      currentRows.push({ c, r, headcount: slips.length, net });
-    }
-  });
-
-  // Bar chart data — top 6 companies by net
-  const topRows = [...currentRows].sort((a, b) => b.net - a.net).slice(0, 6);
-  const maxNet = Math.max(1, ...topRows.map(r => r.net));
-
-  return {
-    html: `
-      <div class="kpi-row">
-        <div class="kpi">
-          <div>
-            <div class="kpi-label">관리 중인 고객사</div>
-            <div class="kpi-value">${activeCount}<span class="sub">/ ${companies.length} 사</span></div>
-            <div class="kpi-trend up">↑ 이번달 신규 1사</div>
-          </div>
-          <div class="kpi-icon">${ICONS.building}</div>
-        </div>
-        <div class="kpi green">
-          <div>
-            <div class="kpi-label">이번 달 급여 처리</div>
-            <div class="kpi-value">${runsDone}<span class="sub">/ ${runsTotal} 건</span></div>
-            <div class="kpi-trend">${Math.round(runsDone / Math.max(1, runsTotal) * 100)}% 완료 · ${runsTotal - runsDone}건 대기</div>
-          </div>
-          <div class="kpi-icon">${ICONS.calc}</div>
-        </div>
-        <div class="kpi purple">
-          <div>
-            <div class="kpi-label">재직 직원 수</div>
-            <div class="kpi-value">${fmt.num(totalEmps)}<span class="sub">명</span></div>
-            <div class="kpi-trend up">↑ 전월 대비 +12명</div>
-          </div>
-          <div class="kpi-icon">${ICONS.users}</div>
-        </div>
-        <div class="kpi orange">
-          <div>
-            <div class="kpi-label">이번 달 총 인건비</div>
-            <div class="kpi-value">${fmt.won(totalCost)}</div>
-            <div class="kpi-trend dn">↓ 전월 대비 1.8%</div>
-          </div>
-          <div class="kpi-icon">${ICONS.money}</div>
-        </div>
-      </div>
-
-      <div class="dash-row">
-        <div class="panel">
-          <div class="panel-title">
-            <span>이번 달 급여 실행 현황 · ${fmt.ym(Y, M)}</span>
-            <span class="actions">
-              <button class="btn sm">${icon("download")}<span>엑셀</span></button>
-            </span>
-          </div>
-          <table class="dt">
-            <thead>
-              <tr>
-                <th style="width:32px" class="center"><input type="checkbox" class="checkbox"/></th>
-                <th>고객사명</th>
-                <th class="center">급여연월</th>
-                <th class="right">대상인원</th>
-                <th class="right">총 실수령액</th>
-                <th class="center">상태</th>
-                <th class="center" style="width:120px">바로가기</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${currentRows.map(({ c, r, headcount, net }) => `
-                <tr class="clickable" data-route='${JSON.stringify({ name: "payroll-slips", companyId: c.companyId, payrollRunId: r.payrollRunId })}'>
-                  <td class="center"><input type="checkbox" class="checkbox" onclick="event.stopPropagation()"/></td>
-                  <td><span class="strong">${c.companyName}</span> <span class="muted">${c.companyCode}</span></td>
-                  <td class="center">${fmt.ym(r.payrollYear, r.payrollMonth)}</td>
-                  <td class="right mono">${fmt.num(headcount)}명</td>
-                  <td class="right mono">${fmt.won(net)}</td>
-                  <td class="center">${badge(r.status)}</td>
-                  <td class="center">
-                    <span class="link">명세 조회 →</span>
-                  </td>
-                </tr>
-              `).join("")}
-              ${currentRows.length === 0 ? `<tr><td colspan="7" class="dt-empty">이번 달 급여 실행 내역이 없습니다.</td></tr>` : ""}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="panel">
-          <div class="panel-title">
-            <span>고객사별 실수령액 TOP 6</span>
-          </div>
-          <div class="dash-chart">
-            <div class="bar-chart">
-              ${topRows.map(r => `
-                <div title="${r.c.companyName}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1f3a5c;font-weight:600">${r.c.companyName.slice(0, 4)}</div>
-                <div class="bar-bg"><div class="bar-fg" style="width:${(r.net / maxNet * 100).toFixed(1)}%"></div></div>
-                <div class="bar-amount">${(r.net / 1_000_000).toFixed(1)}M</div>
-              `).join("")}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-title">
-          <span>최근 작업 내역</span>
-        </div>
-        <table class="dt">
-          <thead><tr>
-            <th style="width:140px">일시</th>
-            <th style="width:110px">사용자</th>
-            <th style="width:130px">작업 유형</th>
-            <th>내용</th>
-            <th class="center" style="width:80px">상태</th>
-          </tr></thead>
-          <tbody>
-            <tr><td class="mono">2026-05-23 14:22</td><td>박지원</td><td>급여 계산</td><td>노바테크 주식회사 · 2026년 5월 정기급여</td><td class="center">${badge("APPROVED")}</td></tr>
-            <tr><td class="mono">2026-05-23 11:08</td><td>박지원</td><td>명세 발송</td><td>그린리프 코스메틱 · 87명에게 명세서 메일 발송</td><td class="center">${badge("PAID")}</td></tr>
-            <tr><td class="mono">2026-05-22 17:41</td><td>이서연</td><td>직원 등록</td><td>한빛로지스틱스 · 신규 입사자 3명</td><td class="center">${badge("APPROVED")}</td></tr>
-            <tr><td class="mono">2026-05-22 09:30</td><td>김재훈</td><td>요율 변경</td><td>2026년도 건강보험 요율 일괄 반영</td><td class="center">${badge("APPROVED")}</td></tr>
-            <tr><td class="mono">2026-05-21 16:55</td><td>박지원</td><td>승인 요청</td><td>메타브릿지 컨설팅 · 5월 급여 계산 결과 검토 필요</td><td class="center">${badge("CALCULATED")}</td></tr>
-          </tbody>
-        </table>
-      </div>
-    `,
-    toolbar: `
-      <div class="group">
-        ${tbtn("새로고침", "refresh", "data-act='refresh'", "primary")}
-        ${tbtn("엑셀 다운로드", "download", "data-act='excel'")}
-        ${tbtn("인쇄", "print", "onclick='window.print()'")}
-      </div>
-      <div class="spacer"></div>
-      <div class="group">
-        <span class="lbl">조회 기준월</span>
-        <select class="select" data-dash-ym>
-          ${Array.from({length: 12}, (_, i) => {
-            const d = new Date(2026, 4 - i, 1);
-            const y = d.getFullYear(), m = d.getMonth() + 1;
-            const val = `${y}-${m}`;
-            return `<option value="${val}" ${Y === y && M === m ? "selected" : ""}>${y}년 ${String(m).padStart(2,"0")}월</option>`;
-          }).join("")}
-        </select>
-      </div>
-    `,
-  };
+  const totalEmps = companies.reduce((s,c)=>s+(MOCK.employeesByCompany[c.companyId]||[]).filter(e=>e.status==="ACTIVE").length,0);
+  const allRuns = companies.flatMap(c=>MOCK.runsByCompany[c.companyId]||[]);
+  const paidRuns   = allRuns.filter(r=>r.status==="PAID").length;
+  const activRuns  = allRuns.filter(r=>r.status!=="PAID"&&r.status!=="DRAFT").length;
+  const recent = allRuns.filter(r=>r.status!=="DRAFT")
+    .sort((a,b)=>b.payrollYear*100+b.payrollMonth - (a.payrollYear*100+a.payrollMonth)).slice(0,8);
+  return { html:`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+      ${[["고객사",companies.length+"개","#1a73e8"],["재직 직원",totalEmps+"명","#00b386"],["지급 완료",paidRuns+"건","#34a853"],["처리 중",activRuns+"건","#fbbc04"]].map(([lbl,val,clr])=>`
+        <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+          <div style="color:#888;font-size:12px;margin-bottom:6px">${lbl}</div>
+          <div style="font-size:26px;font-weight:700;color:${clr}">${val}</div>
+        </div>`).join("")}
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <div style="font-weight:600;margin-bottom:14px">최근 급여 처리 현황</div>
+      <table class="dt">
+        <thead><tr><th>고객사</th><th>급여명</th><th class="center">급여연월</th><th class="right">실수령 합계</th><th class="center">상태</th></tr></thead>
+        <tbody>
+          ${recent.length ? recent.map(r=>{
+            const co=companies.find(c=>c.companyId===r.companyId)||{};
+            const slips=(r.status!=='DRAFT')?MOCK.getSlipsForRun(co.companyId,r.payrollRunId):[];
+            const net=slips.reduce((s,x)=>s+x.netAmount,0);
+            return `<tr class="clickable" data-route='${JSON.stringify({name:"payroll-runs",companyId:co.companyId})}'><td>${co.companyName||""}</td><td>${r.runName}</td><td class="center">${fmt.ym(r.payrollYear,r.payrollMonth)}</td><td class="right mono">${net>0?fmt.won(net):"—"}</td><td class="center">${badge(r.status)}</td></tr>`;
+          }).join("") : `<tr><td colspan="5" class="dt-empty">처리된 급여가 없습니다.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `};
 };
 
 // =========================================================
@@ -300,42 +172,13 @@ PAGES["company-detail"] = (route, tab) => {
     panel = `
       <div class="itab-panel">
         <div class="panel-title" style="margin-bottom:0">
-          <span>현재 적용 중 (2026-01-01 ~)</span>
+          <span>비과세 한도 설정</span>
+          <span class="actions">
+            <button class="btn sm" data-route='${JSON.stringify({name:"payroll-tax",companyId:c.companyId})}'>${icon("edit")}<span>한도 관리</span></button>
+          </span>
         </div>
-        <div class="form-grid" style="border-top:none">
-          <div class="lbl">식대 (비과세)</div><div class="val mono">${fmt.won(c.payStandards.current.meal)}</div>
-          <div class="lbl">교통비 (비과세)</div><div class="val mono">${fmt.won(c.payStandards.current.transport)}</div>
-          <div class="lbl">직책수당 (과장)</div><div class="val mono">${fmt.won(c.payStandards.current.position_과장)}</div>
-          <div class="lbl">직책수당 (차장)</div><div class="val mono">${fmt.won(c.payStandards.current.position_차장)}</div>
-          <div class="lbl">직책수당 (부장)</div><div class="val mono">${fmt.won(c.payStandards.current.position_부장)}</div>
-          <div class="lbl">적용 시작일</div><div class="val">${fmt.date("2026-01-01")}</div>
-        </div>
-
-        <div style="height:14px"></div>
-
-        <div class="panel-title" style="margin-bottom:0">
-          <span>변경 이력</span>
-          <span class="actions"><button class="btn sm">${icon("plus")}<span>이력 추가</span></button></span>
-        </div>
-        <table class="dt">
-          <thead><tr>
-            <th>적용 시작일</th><th>적용 종료일</th>
-            <th class="right">식대</th><th class="right">교통비</th><th class="right">직책수당</th>
-            <th class="center" style="width:90px">상태</th>
-          </tr></thead>
-          <tbody>
-            ${c.payStandards.history.slice().reverse().map((h, i, arr) => `
-              <tr>
-                <td class="mono">${h.from}</td>
-                <td class="mono">${h.to || "—"}</td>
-                <td class="right mono">${fmt.won(h.meal)}</td>
-                <td class="right mono">${fmt.won(h.transport)}</td>
-                <td class="right mono">${fmt.won(h.position)}</td>
-                <td class="center">${i === 0 ? badge("APPROVED") : badge("DRAFT")}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
+        <div class="muted" style="margin:12px 0 4px">급여 기준(식대·교통비 비과세 한도)은 비과세 한도 관리 메뉴에서 설정합니다.</div>
+        <button class="btn primary" style="margin-top:8px" data-route='${JSON.stringify({name:"payroll-tax",companyId:c.companyId})}'>${icon("edit")}<span>비과세 한도 관리로 이동</span></button>
       </div>
     `;
   } else if (itab === "insurance") {
@@ -486,6 +329,7 @@ PAGES["employees"] = (route, tab) => {
             <th>부서</th>
             <th style="width:80px">고용형태</th>
             <th class="right" style="width:80px">부양가족</th>
+            <th class="center" style="width:60px">자차</th>
             <th style="width:110px">입사일</th>
             <th class="center" style="width:80px">상태</th>
           </tr>
@@ -506,11 +350,12 @@ PAGES["employees"] = (route, tab) => {
               <td>${e.orgUnitName}</td>
               <td>${fmtEmpType(e.employmentType)}</td>
               <td class="right mono">${e.dependentCount}명</td>
+              <td class="center">${e.hasOwnCar ? '<span class="badge ok">자차</span>' : '<span style="color:#aaa">—</span>'}</td>
               <td class="mono">${e.hireDate}</td>
               <td class="center">${badgeEmp(e.status)}</td>
             </tr>
           `).join("")}
-          ${rows.length === 0 ? `<tr><td colspan="10" class="dt-empty">조건에 맞는 직원이 없습니다.</td></tr>` : ""}
+          ${rows.length === 0 ? `<tr><td colspan="11" class="dt-empty">조건에 맞는 직원이 없습니다.</td></tr>` : ""}
         </tbody>
       </table>
 
@@ -619,6 +464,7 @@ PAGES["employee-detail"] = (route, tab) => {
             <div class="row"><span class="k">고용형태</span><span>${fmtEmpType(e.employmentType)}</span></div>
             <div class="row"><span class="k">입사일</span><span class="mono">${e.hireDate}</span></div>
             <div class="row"><span class="k">부양가족</span><span class="mono">${e.dependentCount}명</span></div>
+            <div class="row"><span class="k">자차 여부</span><span>${e.hasOwnCar ? '<span class="badge ok">자차 보유</span>' : '해당 없음'}</span></div>
             <div class="row"><span class="k">소속</span><span>${c.companyName}</span></div>
           </div>
           <button class="btn" style="width:100%;justify-content:center;margin-top:14px" data-route='${JSON.stringify({ name: "employees", companyId: c.companyId })}'>${icon("chevL")}<span>직원 목록</span></button>
@@ -742,7 +588,7 @@ PAGES["payroll-runs"] = (route, tab) => {
         </tr></thead>
         <tbody>
           ${runs.map(r => {
-            const slips = MOCK.getSlipsForRun(c.companyId, r.payrollRunId);
+            const slips = (r.status !== 'DRAFT') ? MOCK.getSlipsForRun(c.companyId, r.payrollRunId) : [];
             const net = slips.reduce((s, x) => s + x.netAmount, 0);
             const selected = r.payrollRunId === focus;
             return `
@@ -802,30 +648,36 @@ PAGES["payroll-runs"] = (route, tab) => {
 };
 
 function runActionButtons(company, run) {
-  const slipsRoute = JSON.stringify({ name: "payroll-slips", companyId: company.companyId, payrollRunId: run.payrollRunId });
-  if (run.status === "DRAFT") {
-    return `
-      <button class="btn sm primary" data-act="calculate" data-co="${company.companyId}" data-run="${run.payrollRunId}">${icon("calc")}<span>계산 실행</span></button>
-      <button class="btn sm" data-act="edit-run">${icon("edit")}<span>수정</span></button>
-    `;
-  }
-  if (run.status === "CALCULATED") {
-    return `
-      <button class="btn sm" data-route='${slipsRoute}'>${icon("fileText")}<span>명세 검토</span></button>
-      <button class="btn sm ok" data-act="approve" data-co="${company.companyId}" data-run="${run.payrollRunId}">${icon("check")}<span>승인</span></button>
-    `;
-  }
-  if (run.status === "APPROVED") {
-    return `
-      <button class="btn sm" data-route='${slipsRoute}'>${icon("fileText")}<span>명세 보기</span></button>
-      <button class="btn sm solid" data-act="mark-paid" data-co="${company.companyId}" data-run="${run.payrollRunId}">${icon("check")}<span>지급완료</span></button>
-    `;
-  }
-  // PAID
+  const co  = company.companyId;
+  const rid = run.payrollRunId;
+  const sr  = JSON.stringify({ name: "payroll-slips",  companyId: co, payrollRunId: rid });
+  const lr  = JSON.stringify({ name: "payroll-ledger", companyId: co, payrollRunId: rid });
+
+  // 단순 ID 전달 — 특수문자 이슈 없음
+  const rst = `<button class="btn sm warn" onclick="event.stopPropagation();runReset('${co}','${rid}')">${icon("refresh")}<span>초기화</span></button>`;
+
+  if (run.status === "DRAFT") return `
+    <button class="btn sm primary" onclick="event.stopPropagation();runCalc('${co}','${rid}')">${icon("calc")}<span>계산 실행</span></button>
+    <button class="btn sm" data-act="edit-run" data-co="${co}" data-run="${rid}">${icon("edit")}<span>수정</span></button>`;
+
+  if (run.status === "CALCULATED") return `
+    <button class="btn sm" data-route='${sr}'>${icon("fileText")}<span>명세 검토</span></button>
+    <button class="btn sm ok" onclick="event.stopPropagation();runApprove('${co}','${rid}')">${icon("check")}<span>승인</span></button>
+    ${rst}`;
+
+  if (run.status === "APPROVED") return `
+    <button class="btn sm" data-route='${sr}'>${icon("fileText")}<span>명세 보기</span></button>
+    <button class="btn sm" data-route='${lr}'>${icon("doc")}<span>급여 대장</span></button>
+    <button class="btn sm solid" onclick="event.stopPropagation();runMarkPaid('${co}','${rid}')">${icon("check")}<span>지급완료</span></button>
+    ${rst}`;
+
   return `
-    <button class="btn sm" data-route='${slipsRoute}'>${icon("fileText")}<span>명세 보기</span></button>
-    <button class="btn sm" data-act="download">${icon("download")}<span>이체파일</span></button>
-  `;
+    <button class="btn sm" data-route='${sr}'>${icon("fileText")}<span>명세 보기</span></button>
+    <button class="btn sm" data-route='${lr}'>${icon("doc")}<span>급여 대장</span></button>
+    <button class="btn sm" onclick="event.stopPropagation();runTransfer('${co}','${rid}')">${icon("download")}<span>이체파일</span></button>
+    <button class="btn sm" onclick="event.stopPropagation();runSend('${co}','${rid}')">${icon("mail")}<span>명세발송</span></button>
+    <button class="btn sm primary" onclick="event.stopPropagation();runEmail('${co}','${rid}')">${icon("mail")}<span>이메일발송</span></button>
+    ${rst}`;
 }
 
 // =========================================================
@@ -1610,6 +1462,874 @@ PAGES["payroll-items"] = (route, tab) => {
       <div class="spacer"></div>
       <div class="group">
         ${tbtn("인쇄", "print", "onclick='window.print()'")}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// PAYROLL LEDGER (급여 대장)
+// =========================================================
+PAGES["payroll-ledger"] = (route, tab) => {
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  const cacheKey = `ledger_${route.payrollRunId}`;
+  if (tab._ledger === undefined) {
+    tab._ledger = undefined;
+    authFetch(`/api/companies/${route.companyId}/payroll-runs/${route.payrollRunId}/ledger`)
+      .then(r => r.json())
+      .then(j => { tab._ledger = j.data; renderApp(); })
+      .catch(() => { tab._ledger = "error"; renderApp(); });
+    return { html: `<div class="loading">급여 대장 불러오는 중...</div>`, toolbar: "" };
+  }
+  if (tab._ledger === 'error') return { html: emptyState("급여 대장을 불러오지 못했습니다."), toolbar: "" };
+
+  const lg = tab._ledger;
+  const rows = lg.rows;
+
+  const cols = ["사번","성명","부서","직급","호봉","기본급","식대","교통비","직책수당","총지급","비과세","과세표준","건강보험","장기요양","국민연금","고용보험","갑근세","지방소득세","공제합계","실수령액","발송"];
+  const colHtml = cols.map(c => `<th class="right" style="white-space:nowrap;font-size:11px">${c}</th>`).join("");
+
+  const rowsHtml = rows.map(r => `
+    <tr>
+      <td class="mono" style="font-size:11px">${(r.employeeNo || r.employeeName || "—")}</td>
+      <td style="font-size:11px">${(r.fullName || r.employeeName || "—")}</td>
+      <td style="font-size:11px">${r.orgUnitName}</td>
+      <td style="font-size:11px">${r.gradeName}</td>
+      <td class="right mono" style="font-size:11px">${r.currentStep}호봉</td>
+      <td class="right mono" style="font-size:11px">${fmt.won(r.baseSalary)}</td>
+      <td class="right mono" style="font-size:11px">${fmt.won(r.mealAllowance)}</td>
+      <td class="right mono" style="font-size:11px">${fmt.won(r.transportAllowance)}</td>
+      <td class="right mono" style="font-size:11px">${fmt.won(r.positionAllowance)}</td>
+      <td class="right mono strong" style="font-size:11px">${fmt.won(r.grossAmount)}</td>
+      <td class="right mono muted" style="font-size:11px">${fmt.won(r.nonTaxableAmount)}</td>
+      <td class="right mono" style="font-size:11px">${fmt.won(r.taxableIncome)}</td>
+      <td class="right mono" style="font-size:11px;color:#e17055">${fmt.won(r.healthInsurance)}</td>
+      <td class="right mono" style="font-size:11px;color:#e17055">${fmt.won(r.ltCare)}</td>
+      <td class="right mono" style="font-size:11px;color:#e17055">${fmt.won(r.pension)}</td>
+      <td class="right mono" style="font-size:11px;color:#e17055">${fmt.won(r.empInsurance)}</td>
+      <td class="right mono" style="font-size:11px;color:#e17055">${fmt.won(r.incomeTax)}</td>
+      <td class="right mono" style="font-size:11px;color:#e17055">${fmt.won(r.localIncomeTax)}</td>
+      <td class="right mono strong" style="font-size:11px;color:#e17055">${fmt.won(r.deductionAmount)}</td>
+      <td class="right mono strong" style="font-size:11px;color:#0984e3">${fmt.won(r.netAmount)}</td>
+      <td class="center" style="font-size:11px">${r.deliveryStatus === "SENT" ? '<span class="badge ok">발송</span>' : '<span style="color:#aaa">대기</span>'}</td>
+    </tr>
+  `).join("");
+
+  return {
+    html: `
+      <div class="search-strip" style="flex-wrap:wrap;gap:8px">
+        <div>
+          <span style="font-size:16px;font-weight:700;color:#1f3a5c">${lg.runName}</span>
+          <span class="muted" style="margin-left:10px">${lg.payrollYear}년 ${lg.payrollMonth}월 · 지급일 ${lg.payDate}</span>
+        </div>
+        <div class="spacer"></div>
+        <div style="display:flex;gap:20px;font-size:13px">
+          <span>총 지급 <span class="strong mono">${fmt.won(lg.totalGross)}</span></span>
+          <span>공제 합계 <span class="strong mono" style="color:#e17055">${fmt.won(lg.totalDeduction)}</span></span>
+          <span>실수령 합계 <span class="strong mono" style="color:#0984e3">${fmt.won(lg.totalNet)}</span></span>
+          <span>인원 <span class="strong mono">${rows.length}명</span></span>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="dt" style="min-width:1400px">
+          <thead><tr>${colHtml}</tr></thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="background:#f8f9fa;font-weight:700;border-top:2px solid #b2bec3">
+              <td colspan="5" class="center" style="font-size:11px">합 계</td>
+              <td colspan="4"></td>
+              <td class="right mono strong" style="font-size:11px">${fmt.won(lg.totalGross)}</td>
+              <td colspan="2"></td>
+              <td colspan="6"></td>
+              <td class="right mono strong" style="font-size:11px;color:#e17055">${fmt.won(lg.totalDeduction)}</td>
+              <td class="right mono strong" style="font-size:11px;color:#0984e3">${fmt.won(lg.totalNet)}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("명세 발송", "mail", `data-act="slips-send" data-co="${route.companyId}" data-run="${route.payrollRunId}"`)}
+        ${tbtn("이체 파일", "download", `data-act="run-transfer" data-co="${route.companyId}" data-run="${route.payrollRunId}"`)}
+        ${tbtn("CSV 내보내기", "download", "data-act='excel'")}
+        ${tbtn("인쇄", "print", "onclick='window.print()'")}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// HR-ATTENDANCE — 근태 관리
+// =========================================================
+PAGES["hr-attendance"] = (route, tab) => {
+  if (route.needsPicker) return { html: renderCompanyPicker(route), toolbar: "" };
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  const today = new Date();
+  tab.state = tab.state || { itab: "leave-requests", year: today.getFullYear(), month: today.getMonth() + 1 };
+  const s = tab.state;
+  const itab = s.itab;
+
+  // 비동기 데이터 로드 (캐시 전략)
+  if (s._leaveRequests === undefined) {
+    s._leaveRequests = [];
+    MOCK.fetchLeaveRequests(c.companyId, s.year, s.month)
+      .then(d => { s._leaveRequests = d; renderApp(); })
+      .catch(() => {});
+  }
+  if (s._overtime === undefined) {
+    s._overtime = [];
+    MOCK.fetchOvertime(c.companyId, s.year, s.month)
+      .then(d => { s._overtime = d; renderApp(); })
+      .catch(() => {});
+  }
+  if (s._leaveTypes === undefined) {
+    s._leaveTypes = [];
+    MOCK.fetchLeaveTypes(c.companyId)
+      .then(d => { s._leaveTypes = d; renderApp(); })
+      .catch(() => {});
+  }
+
+  const leaveRequests = s._leaveRequests || [];
+  const overtime = s._overtime || [];
+  const leaveTypes = s._leaveTypes || [];
+
+  const years = [];
+  for (let y = today.getFullYear(); y >= today.getFullYear() - 2; y--) years.push(y);
+
+  let panel = "";
+  if (itab === "leave-requests") {
+    panel = `
+      <table class="dt">
+        <thead><tr>
+          <th style="width:36px" class="center"><input type="checkbox" class="checkbox"/></th>
+          <th style="width:90px">사번</th>
+          <th style="width:100px">성명</th>
+          <th style="width:100px">휴가유형</th>
+          <th style="width:120px">시작일</th>
+          <th style="width:120px">종료일</th>
+          <th class="right" style="width:70px">일수</th>
+          <th class="center" style="width:80px">상태</th>
+          <th class="center" style="width:160px">작업</th>
+        </tr></thead>
+        <tbody>
+          ${leaveRequests.length === 0 ? `<tr><td colspan="9" class="dt-empty">해당 월 휴가 신청 내역이 없습니다.</td></tr>` :
+            leaveRequests.map(r => `
+              <tr>
+                <td class="center"><input type="checkbox" class="checkbox" data-sel-row="${r.leaveRequestId}" onclick="event.stopPropagation()"/></td>
+                <td class="mono">${(r.employeeNo || r.employeeName || "—") || "—"}</td>
+                <td><span class="strong">${(r.fullName || r.employeeName || "—") || "—"}</span></td>
+                <td>${r.leaveTypeName || "—"}</td>
+                <td class="mono">${r.startDate || "—"}</td>
+                <td class="mono">${r.endDate || "—"}</td>
+                <td class="right mono">${r.days ?? "—"}일</td>
+                <td class="center">${badge(r.status || "DRAFT")}</td>
+                <td class="center">
+                  ${r.status === "PENDING" ? `
+                    <button class="btn sm ok" data-act="leave-approve" data-req-id="${r.leaveRequestId}">${icon("check")}<span>승인</span></button>
+                    <button class="btn sm warn" data-act="leave-reject" data-req-id="${r.leaveRequestId}">${icon("trash")}<span>반려</span></button>
+                  ` : `<span class="muted">${r.status === "APPROVED" ? "승인완료" : r.status === "REJECTED" ? "반려됨" : "—"}</span>`}
+                </td>
+              </tr>
+            `).join("")}
+        </tbody>
+      </table>
+    `;
+  } else if (itab === "overtime") {
+    panel = `
+      <table class="dt">
+        <thead><tr>
+          <th style="width:36px" class="center"><input type="checkbox" class="checkbox"/></th>
+          <th style="width:90px">사번</th>
+          <th style="width:100px">성명</th>
+          <th style="width:120px">날짜</th>
+          <th style="width:100px">유형</th>
+          <th class="right" style="width:80px">시간</th>
+          <th class="center" style="width:90px">승인여부</th>
+          <th class="center" style="width:120px">작업</th>
+        </tr></thead>
+        <tbody>
+          ${overtime.length === 0 ? `<tr><td colspan="8" class="dt-empty">해당 월 시간외근무 내역이 없습니다.</td></tr>` :
+            overtime.map(o => `
+              <tr>
+                <td class="center"><input type="checkbox" class="checkbox" data-sel-row="${o.overtimeId}" onclick="event.stopPropagation()"/></td>
+                <td class="mono">${o.employeeNo || "—"}</td>
+                <td><span class="strong">${o.fullName || "—"}</span></td>
+                <td class="mono">${o.workDate || "—"}</td>
+                <td>${o.overtimeType || "—"}</td>
+                <td class="right mono">${o.hours ?? "—"}시간</td>
+                <td class="center">${o.approved ? badge("APPROVED") : badge("DRAFT")}</td>
+                <td class="center">
+                  ${!o.approved ? `
+                    <button class="btn sm ok" data-act="overtime-approve" data-ot-id="${o.overtimeId || o.id || ""}">${icon("check")}<span>승인</span></button>
+                  ` : `<span class="muted">승인완료</span>`}
+                </td>
+              </tr>
+            `).join("")}
+        </tbody>
+      </table>
+    `;
+  } else if (itab === "leave-types") {
+    panel = `
+      <table class="dt">
+        <thead><tr>
+          <th style="width:36px" class="center"><input type="checkbox" class="checkbox"/></th>
+          <th>휴가유형명</th>
+          <th class="right" style="width:80px">연간 일수</th>
+          <th class="center" style="width:90px">이월 여부</th>
+          <th class="center" style="width:80px">사용여부</th>
+          <th class="center" style="width:120px">작업</th>
+        </tr></thead>
+        <tbody>
+          ${leaveTypes.length === 0 ? `<tr><td colspan="6" class="dt-empty">등록된 휴가 유형이 없습니다.</td></tr>` :
+            leaveTypes.map(lt => `
+              <tr>
+                <td class="center"><input type="checkbox" class="checkbox" data-sel-row="${lt.leaveTypeId}" onclick="event.stopPropagation()"/></td>
+                <td><span class="strong">${lt.typeName || "—"}</span></td>
+                <td class="right mono">${lt.annualDays ?? "—"}일</td>
+                <td class="center">${lt.carryOver ? badge("ACTIVE") : badge("INACTIVE")}</td>
+                <td class="center">${lt.activeFlag !== false ? badge("ACTIVE") : badge("INACTIVE")}</td>
+                <td class="center">
+                  <button class="btn sm" onclick="event.stopPropagation();openLeaveTypeModal(${JSON.stringify(lt).replace(/"/g,'&quot;')}, '${route.companyId}')">${icon("edit")}<span>수정</span></button>
+                </td>
+              </tr>
+            `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  return {
+    html: `
+      <div class="search-strip">
+        <div class="label-box">고객사</div>
+        <strong style="color:#1f3a5c">${c.companyName}</strong>
+        <div class="field" style="margin-left:16px">
+          <span class="field-label">연도</span>
+          <select class="select" id="att-year">
+            ${years.map(y => `<option value="${y}" ${s.year === y ? "selected" : ""}>${y}년</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">월</span>
+          <select class="select" id="att-month">
+            ${Array.from({length:12},(_,i)=>i+1).map(m => `<option value="${m}" ${s.month === m ? "selected" : ""}>${m}월</option>`).join("")}
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" data-co-switch="hr-attendance">${icon("building")}<span>고객사 변경</span></button>
+      </div>
+
+      <div class="itabs">
+        <div class="itab ${itab === "leave-requests" ? "active" : ""}" data-itab="leave-requests">휴가신청</div>
+        <div class="itab ${itab === "overtime" ? "active" : ""}" data-itab="overtime">시간외근무</div>
+        <div class="itab ${itab === "leave-types" ? "active" : ""}" data-itab="leave-types">휴가유형관리</div>
+      </div>
+      ${panel}
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+        ${tbtn("새로고침", "refresh", "data-act='refresh'", "primary")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("신규", "plus", "data-act='att-new'", "primary")}
+        ${tbtn("수정", "edit", "data-act='att-edit'")}
+        ${tbtn("삭제", "trash", "data-act='att-del'", "warn")}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// HR-STEP-INCREMENT — 호봉 승급 처리
+// =========================================================
+PAGES["hr-step-increment"] = (route, tab) => {
+  if (route.needsPicker) return { html: renderCompanyPicker(route), toolbar: "" };
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  tab.state = tab.state || { year: new Date().getFullYear(), selectedIds: [] };
+  const s = tab.state;
+  const emps = (MOCK.employeesByCompany[c.companyId] || []).filter(e => e.status === "ACTIVE");
+
+  const result = s.result;
+
+  const years = [];
+  for (let y = new Date().getFullYear(); y >= new Date().getFullYear() - 2; y--) years.push(y);
+
+  return {
+    html: `
+      <div class="search-strip">
+        <div class="label-box">고객사</div>
+        <strong style="color:#1f3a5c">${c.companyName}</strong>
+        <div class="field" style="margin-left:16px">
+          <span class="field-label">대상연도</span>
+          <select class="select" id="si-year">
+            ${years.map(y => `<option value="${y}" ${s.year === y ? "selected" : ""}>${y}년</option>`).join("")}
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" data-co-switch="hr-step-increment">${icon("building")}<span>고객사 변경</span></button>
+      </div>
+
+      ${result ? `
+        <div style="margin:10px 0;padding:12px 16px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;font-size:13px;color:#1b5e20">
+          호봉 승급 결과: <b>승급 ${result.incremented ?? 0}명</b>
+          ${result.skipped ? ` / 스킵 ${result.skipped}명` : ""}
+        </div>
+      ` : ""}
+
+      <table class="dt">
+        <thead><tr>
+          <th style="width:36px" class="center">
+            <input type="checkbox" class="checkbox" id="si-all"/>
+          </th>
+          <th style="width:90px">사번</th>
+          <th style="width:100px">성명</th>
+          <th style="width:80px">직급</th>
+          <th class="right" style="width:80px">현재호봉</th>
+          <th class="right" style="width:80px">승급후호봉</th>
+          <th>부서</th>
+        </tr></thead>
+        <tbody>
+          ${emps.map(e => {
+            const checked = (s.selectedIds || []).includes(e.employeeId);
+            return `
+              <tr>
+                <td class="center"><input type="checkbox" class="checkbox" data-sel-row="${e.employeeId}" ${checked ? "checked" : ""} onclick="event.stopPropagation()"/></td>
+                <td class="mono">${e.employeeNo}</td>
+                <td><span class="strong">${e.fullName}</span></td>
+                <td>${e.gradeName}</td>
+                <td class="right mono">${e.currentStep}호봉</td>
+                <td class="right mono" style="color:#2ecc71">${e.currentStep + 1}호봉</td>
+                <td>${e.orgUnitName}</td>
+              </tr>
+            `;
+          }).join("")}
+          ${emps.length === 0 ? `<tr><td colspan="7" class="dt-empty">재직 중인 직원이 없습니다.</td></tr>` : ""}
+        </tbody>
+      </table>
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+        ${tbtn("새로고침", "refresh", "data-act='refresh'", "primary")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("호봉 승급 실행", "calc", `data-act='step-increment' data-co='${c.companyId}'`, "primary")}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// PAYROLL-WITHHOLDING — 원천세 신고서
+// =========================================================
+PAGES["payroll-withholding"] = (route, tab) => {
+  if (route.needsPicker) return { html: renderCompanyPicker(route), toolbar: "" };
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  const today = new Date();
+  tab.state = tab.state || { year: today.getFullYear(), month: today.getMonth() + 1, searched: false };
+  const s = tab.state;
+
+  if (s.searched && !s._withholdingData) {
+    MOCK.fetchWithholdingTax(c.companyId, s.year, s.month)
+      .then(d => { s._withholdingData = d || { rows: [], summary: {} }; renderApp(); })
+      .catch(() => { s._withholdingData = { rows: [], summary: {} }; renderApp(); });
+    return { html: `<div class="loading">원천세 데이터 로딩 중...</div>`, toolbar: "" };
+  }
+
+  const data = s._withholdingData;
+  const rows = data?.rows || [];
+  const sum = data?.summary || {};
+
+  const years = [];
+  for (let y = today.getFullYear(); y >= today.getFullYear() - 3; y--) years.push(y);
+
+  // 납부기한 계산 (익월 10일)
+  const dueMonth = s.month === 12 ? 1 : s.month + 1;
+  const dueYear = s.month === 12 ? s.year + 1 : s.year;
+  const dueDate = `${dueYear}-${String(dueMonth).padStart(2,"0")}-10`;
+
+  return {
+    html: `
+      <div class="search-strip">
+        <div class="label-box">검색조건</div>
+        <div class="field">
+          <span class="field-label">고객사</span>
+          <strong style="color:#1f3a5c">${c.companyName}</strong>
+        </div>
+        <div class="field">
+          <span class="field-label">연도</span>
+          <select class="select" id="wh-year">
+            ${years.map(y => `<option value="${y}" ${s.year === y ? "selected" : ""}>${y}년</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">월</span>
+          <select class="select" id="wh-month">
+            ${Array.from({length:12},(_,i)=>i+1).map(m => `<option value="${m}" ${s.month === m ? "selected" : ""}>${m}월</option>`).join("")}
+          </select>
+        </div>
+        <button class="btn primary" id="wh-search">${icon("search")}<span>조회</span></button>
+        <div class="spacer"></div>
+        <button class="btn" data-co-switch="payroll-withholding">${icon("building")}<span>고객사 변경</span></button>
+      </div>
+
+      ${data ? `
+        <div class="panel" style="margin-bottom:14px">
+          <div class="panel-title">신고서 헤더</div>
+          <div class="form-grid">
+            <div class="lbl">회사명</div><div class="val">${c.companyName}</div>
+            <div class="lbl">사업자번호</div><div class="val mono">${c.bizNo || "—"}</div>
+            <div class="lbl">신고월</div><div class="val">${s.year}년 ${s.month}월</div>
+            <div class="lbl">납부기한</div><div class="val mono">${dueDate}</div>
+          </div>
+        </div>
+
+        <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);padding:10px;margin-bottom:14px">
+          <div class="kpi">
+            <div>
+              <div class="kpi-label">과세소득 합계</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won(sum.totalTaxableIncome || 0)}</div>
+            </div>
+          </div>
+          <div class="kpi orange">
+            <div>
+              <div class="kpi-label">갑근세 합계</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won(sum.totalIncomeTax || 0)}</div>
+            </div>
+          </div>
+          <div class="kpi purple">
+            <div>
+              <div class="kpi-label">지방소득세 합계</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won(sum.totalLocalTax || 0)}</div>
+            </div>
+          </div>
+          <div class="kpi green">
+            <div>
+              <div class="kpi-label">납부세액</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won((sum.totalIncomeTax || 0) + (sum.totalLocalTax || 0))}</div>
+            </div>
+          </div>
+        </div>
+
+        <table class="dt">
+          <thead><tr>
+            <th style="width:90px">사번</th>
+            <th style="width:100px">성명</th>
+            <th class="right">과세소득</th>
+            <th class="right">갑근세</th>
+            <th class="right">지방소득세</th>
+          </tr></thead>
+          <tbody>
+            ${rows.length === 0 ? `<tr><td colspan="5" class="dt-empty">데이터가 없습니다.</td></tr>` :
+              rows.map(r => `
+                <tr>
+                  <td class="mono">${(r.employeeNo || r.employeeName || "—")}</td>
+                  <td>${(r.fullName || r.employeeName || "—")}</td>
+                  <td class="right mono">${fmt.won(r.taxableIncome)}</td>
+                  <td class="right mono">${fmt.won(r.incomeTax)}</td>
+                  <td class="right mono">${fmt.won(r.localTax)}</td>
+                </tr>
+              `).join("")}
+          </tbody>
+        </table>
+      ` : `<div class="empty-state"><div class="es-title">조회 조건을 선택한 후 [조회] 버튼을 클릭하세요.</div></div>`}
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("PDF 출력", "print", "onclick='window.print()'")}
+        ${tbtn("CSV 내보내기", "download", "data-act='excel'")}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// PAYROLL-YEAR-END — 연말정산 기초
+// =========================================================
+PAGES["payroll-year-end"] = (route, tab) => {
+  if (route.needsPicker) return { html: renderCompanyPicker(route), toolbar: "" };
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  const today = new Date();
+  tab.state = tab.state || { year: today.getFullYear() - 1, searched: false };
+  const s = tab.state;
+
+  if (s.searched && !s._yearEndData) {
+    MOCK.fetchYearEnd(c.companyId, s.year)
+      .then(d => { s._yearEndData = d || { rows: [], summary: {} }; renderApp(); })
+      .catch(() => { s._yearEndData = { rows: [], summary: {} }; renderApp(); });
+    return { html: `<div class="loading">연말정산 데이터 로딩 중...</div>`, toolbar: "" };
+  }
+
+  const data = s._yearEndData;
+  const rows = data?.rows || [];
+  const sum = data?.summary || {};
+
+  const years = [];
+  for (let y = today.getFullYear() - 1; y >= today.getFullYear() - 5; y--) years.push(y);
+
+  return {
+    html: `
+      <div class="search-strip">
+        <div class="label-box">검색조건</div>
+        <div class="field">
+          <span class="field-label">고객사</span>
+          <strong style="color:#1f3a5c">${c.companyName}</strong>
+        </div>
+        <div class="field">
+          <span class="field-label">연도</span>
+          <select class="select" id="ye-year">
+            ${years.map(y => `<option value="${y}" ${s.year === y ? "selected" : ""}>${y}년</option>`).join("")}
+          </select>
+        </div>
+        <button class="btn primary" id="ye-search">${icon("search")}<span>조회</span></button>
+        <div class="spacer"></div>
+        <button class="btn" data-co-switch="payroll-year-end">${icon("building")}<span>고객사 변경</span></button>
+      </div>
+
+      ${data ? `
+        <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);padding:10px;margin-bottom:14px">
+          <div class="kpi">
+            <div>
+              <div class="kpi-label">총급여 합계</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won(sum.totalGross || 0)}</div>
+            </div>
+          </div>
+          <div class="kpi orange">
+            <div>
+              <div class="kpi-label">과세소득 합계</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won(sum.totalTaxable || 0)}</div>
+            </div>
+          </div>
+          <div class="kpi purple">
+            <div>
+              <div class="kpi-label">원천징수세액 합계</div>
+              <div class="kpi-value" style="font-size:16px">${fmt.won(sum.totalWithheld || 0)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin:0 0 12px;padding:12px 14px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;font-size:12px;color:#6d4c00;line-height:1.7">
+          ※ 본 화면은 연말정산 기초 자료를 제공합니다. 실제 연말정산 신고는 홈택스를 통해 진행해 주세요.<br/>
+          ※ 원천징수세액은 해당 연도 1월~12월 갑근세 + 지방소득세 합산 금액입니다.
+        </div>
+
+        <table class="dt">
+          <thead><tr>
+            <th style="width:90px">사번</th>
+            <th style="width:100px">성명</th>
+            <th class="right">연간 총급여</th>
+            <th class="right">연간 과세소득</th>
+            <th class="right">원천징수세액</th>
+          </tr></thead>
+          <tbody>
+            ${rows.length === 0 ? `<tr><td colspan="5" class="dt-empty">데이터가 없습니다.</td></tr>` :
+              rows.map(r => `
+                <tr>
+                  <td class="mono">${(r.employeeNo || r.employeeName || "—")}</td>
+                  <td>${(r.fullName || r.employeeName || "—")}</td>
+                  <td class="right mono">${fmt.won(r.annualGross)}</td>
+                  <td class="right mono">${fmt.won(r.annualTaxable)}</td>
+                  <td class="right mono">${fmt.won(r.annualWithheld)}</td>
+                </tr>
+              `).join("")}
+          </tbody>
+        </table>
+      ` : `<div class="empty-state"><div class="es-title">조회 연도를 선택한 후 [조회] 버튼을 클릭하세요.</div></div>`}
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("CSV 내보내기", "download", "data-act='excel'")}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// PAYROLL-ALLOWANCE-ITEMS — 수당항목 마스터
+// =========================================================
+PAGES["payroll-allowance-items"] = (route, tab) => {
+  if (route.needsPicker) return { html: renderCompanyPicker(route), toolbar: "" };
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  tab.state = tab.state || { selectedIds: [] };
+  const s = tab.state;
+
+  if (s._allowanceItems === undefined) {
+    s._allowanceItems = undefined;
+    MOCK.fetchAllowanceItems(c.companyId)
+      .then(d => { s._allowanceItems = d; renderApp(); })
+      .catch(() => { s._allowanceItems = []; renderApp(); });
+    return { html: `<div class="loading">수당 항목 로딩 중...</div>`, toolbar: "" };
+  }
+
+  const items = s._allowanceItems || [];
+  const earnings = items.filter(x => x.itemType === "EARNING" || x.type === "EARNING");
+  const deductions = items.filter(x => x.itemType === "DEDUCTION" || x.type === "DEDUCTION");
+
+  return {
+    html: `
+      <div class="search-strip">
+        <div class="label-box">고객사</div>
+        <strong style="color:#1f3a5c">${c.companyName}</strong>
+        <div class="spacer"></div>
+        <button class="btn" data-co-switch="payroll-allowance-items">${icon("building")}<span>고객사 변경</span></button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div class="panel-title" style="margin-bottom:8px">
+            <span style="color:#155724">↑ 지급 항목 (${earnings.length}건)</span>
+          </div>
+          <table class="dt">
+            <thead><tr>
+              <th style="width:36px" class="center"><input type="checkbox" class="checkbox"/></th>
+              <th style="width:80px">코드</th>
+              <th>항목명</th>
+              <th class="center" style="width:70px">과세</th>
+              <th class="right" style="width:100px">비과세한도</th>
+              <th class="right" style="width:90px">기본금액</th>
+              <th class="center" style="width:70px">사용</th>
+            </tr></thead>
+            <tbody>
+              ${earnings.length === 0 ? `<tr><td colspan="7" class="dt-empty">등록된 지급 항목이 없습니다.</td></tr>` :
+                earnings.map(it => `
+                  <tr>
+                    <td class="center"><input type="checkbox" class="checkbox" data-sel-row="${it.itemId || it.id}" onclick="event.stopPropagation()"/></td>
+                    <td class="mono">${it.itemCode || "—"}</td>
+                    <td><span class="strong">${it.itemName}</span></td>
+                    <td class="center"><span class="badge ${it.isTaxable ? "blue" : "grey"}">${it.isTaxable ? "과세" : "비과세"}</span></td>
+                    <td class="right mono">${it.nonTaxableLimit ? fmt.won(it.nonTaxableLimit) : "—"}</td>
+                    <td class="right mono">${it.defaultAmount ? fmt.won(it.defaultAmount) : "—"}</td>
+                    <td class="center">${it.activeFlag !== false ? badge("ACTIVE") : badge("INACTIVE")}</td>
+                  </tr>
+                `).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="panel-title" style="margin-bottom:8px">
+            <span style="color:#721c24">↓ 공제 항목 (${deductions.length}건)</span>
+          </div>
+          <table class="dt">
+            <thead><tr>
+              <th style="width:36px" class="center"><input type="checkbox" class="checkbox"/></th>
+              <th style="width:80px">코드</th>
+              <th>항목명</th>
+              <th class="center" style="width:70px">과세</th>
+              <th class="right" style="width:100px">비과세한도</th>
+              <th class="right" style="width:90px">기본금액</th>
+              <th class="center" style="width:70px">사용</th>
+            </tr></thead>
+            <tbody>
+              ${deductions.length === 0 ? `<tr><td colspan="7" class="dt-empty">등록된 공제 항목이 없습니다.</td></tr>` :
+                deductions.map(it => `
+                  <tr>
+                    <td class="center"><input type="checkbox" class="checkbox" data-sel-row="${it.itemId || it.id}" onclick="event.stopPropagation()"/></td>
+                    <td class="mono">${it.itemCode || "—"}</td>
+                    <td><span class="strong">${it.itemName}</span></td>
+                    <td class="center"><span class="badge ${it.isTaxable ? "blue" : "grey"}">${it.isTaxable ? "과세" : "비과세"}</span></td>
+                    <td class="right mono">${it.nonTaxableLimit ? fmt.won(it.nonTaxableLimit) : "—"}</td>
+                    <td class="right mono">${it.defaultAmount ? fmt.won(it.defaultAmount) : "—"}</td>
+                    <td class="center">${it.activeFlag !== false ? badge("ACTIVE") : badge("INACTIVE")}</td>
+                  </tr>
+                `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+        ${tbtn("새로고침", "refresh", "data-act='refresh'", "primary")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("신규", "plus", `data-act='allowance-new' data-co='${c.companyId}'`, "primary")}
+        ${tbtn("수정", "edit", `data-act='allowance-edit' data-co='${c.companyId}'`)}
+        ${tbtn("삭제", "trash", `data-act='allowance-del' data-co='${c.companyId}'`, "warn")}
+        ${tbtn("기본항목초기화", "refresh", `data-act='allowance-init' data-co='${c.companyId}'`)}
+      </div>
+    `,
+  };
+};
+
+// =========================================================
+// REPORT-LABOR-COST — 인건비 통계
+// =========================================================
+PAGES["report-labor-cost"] = (route, tab) => {
+  if (route.needsPicker) return { html: renderCompanyPicker(route), toolbar: "" };
+  const c = MOCK.companies.find(x => x.companyId === route.companyId);
+  if (!c) return { html: emptyState("고객사를 찾을 수 없습니다.") };
+
+  const today = new Date();
+  tab.state = tab.state || { itab: "monthly", year: today.getFullYear(), month: today.getMonth() + 1, searched: false };
+  const s = tab.state;
+  const itab = s.itab;
+
+  if (s.searched) {
+    if (s._trend === undefined) {
+      MOCK.fetchLaborCostTrend(c.companyId, s.year)
+        .then(d => { s._trend = d; renderApp(); })
+        .catch(() => { s._trend = []; });
+    }
+    if (s._byDept === undefined) {
+      MOCK.fetchLaborCostByDept(c.companyId, s.year, s.month)
+        .then(d => { s._byDept = d; renderApp(); })
+        .catch(() => { s._byDept = []; });
+    }
+  }
+
+  const trend = s._trend || [];
+  const byDept = s._byDept || [];
+
+  const years = [];
+  for (let y = today.getFullYear(); y >= today.getFullYear() - 3; y--) years.push(y);
+
+  // 현재 월 데이터 (trend에서 추출)
+  const monthData = trend.find(t => t.month === s.month) || {};
+
+  let panel = "";
+  if (itab === "monthly") {
+    panel = `
+      <div class="kpi-row" style="grid-template-columns:repeat(5,1fr);padding:10px;margin-bottom:14px">
+        <div class="kpi"><div><div class="kpi-label">총 지급</div><div class="kpi-value" style="font-size:15px">${fmt.won(monthData.totalGross || 0)}</div></div></div>
+        <div class="kpi orange"><div><div class="kpi-label">총 공제</div><div class="kpi-value" style="font-size:15px">${fmt.won(monthData.totalDeduction || 0)}</div></div></div>
+        <div class="kpi green"><div><div class="kpi-label">실수령 합계</div><div class="kpi-value" style="font-size:15px">${fmt.won(monthData.totalNet || 0)}</div></div></div>
+        <div class="kpi purple"><div><div class="kpi-label">인원</div><div class="kpi-value" style="font-size:15px">${monthData.headcount || 0}<span class="sub">명</span></div></div></div>
+        <div class="kpi"><div><div class="kpi-label">인당 평균</div><div class="kpi-value" style="font-size:15px">${fmt.won(monthData.headcount ? Math.floor((monthData.totalNet || 0) / monthData.headcount) : 0)}</div></div></div>
+      </div>
+      ${!s.searched ? `<div class="empty-state"><div class="es-title">조회 버튼을 클릭하세요.</div></div>` : ""}
+    `;
+  } else if (itab === "by-dept") {
+    const total = byDept.reduce((acc, d) => acc + (d.totalGross || 0), 0) || 1;
+    panel = `
+      <table class="dt">
+        <thead><tr>
+          <th>부서명</th>
+          <th class="right" style="width:60px">인원</th>
+          <th class="right">총 지급</th>
+          <th class="right">실수령</th>
+          <th style="width:200px">비율</th>
+        </tr></thead>
+        <tbody>
+          ${byDept.length === 0 ? `<tr><td colspan="5" class="dt-empty">데이터가 없습니다.</td></tr>` :
+            byDept.map(d => {
+              const pct = ((d.totalGross || 0) / total * 100).toFixed(1);
+              return `
+                <tr>
+                  <td><span class="strong">${d.orgUnitName || "—"}</span></td>
+                  <td class="right mono">${d.headcount || 0}명</td>
+                  <td class="right mono">${fmt.won(d.totalGross || 0)}</td>
+                  <td class="right mono">${fmt.won(d.totalNet || 0)}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="flex:1;height:8px;background:#e9ecef;border-radius:4px">
+                        <div style="width:${pct}%;height:100%;background:#3d75b0;border-radius:4px"></div>
+                      </div>
+                      <span class="muted" style="font-size:11px;min-width:36px">${pct}%</span>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+        </tbody>
+      </table>
+    `;
+  } else if (itab === "trend") {
+    panel = `
+      <table class="dt">
+        <thead><tr>
+          <th class="center" style="width:60px">월</th>
+          <th class="right">총 지급</th>
+          <th class="right">실수령</th>
+          <th class="right" style="width:60px">인원</th>
+          <th class="right">인당평균</th>
+        </tr></thead>
+        <tbody>
+          ${trend.length === 0 ? `<tr><td colspan="5" class="dt-empty">데이터가 없습니다. 조회 버튼을 클릭하세요.</td></tr>` :
+            trend.map(t => `
+              <tr ${t.month === s.month ? 'style="background:#eef3f9"' : ""}>
+                <td class="center mono">${t.month}월</td>
+                <td class="right mono">${fmt.won(t.totalGross || 0)}</td>
+                <td class="right mono">${fmt.won(t.totalNet || 0)}</td>
+                <td class="right mono">${t.headcount || 0}명</td>
+                <td class="right mono">${fmt.won(t.headcount ? Math.floor((t.totalNet || 0) / t.headcount) : 0)}</td>
+              </tr>
+            `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  return {
+    html: `
+      <div class="search-strip">
+        <div class="label-box">검색조건</div>
+        <div class="field">
+          <span class="field-label">고객사</span>
+          <strong style="color:#1f3a5c">${c.companyName}</strong>
+        </div>
+        <div class="field">
+          <span class="field-label">연도</span>
+          <select class="select" id="lc-year">
+            ${years.map(y => `<option value="${y}" ${s.year === y ? "selected" : ""}>${y}년</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">월 (선택)</span>
+          <select class="select" id="lc-month">
+            <option value="">전체</option>
+            ${Array.from({length:12},(_,i)=>i+1).map(m => `<option value="${m}" ${s.month === m ? "selected" : ""}>${m}월</option>`).join("")}
+          </select>
+        </div>
+        <button class="btn primary" id="lc-search">${icon("search")}<span>조회</span></button>
+        <div class="spacer"></div>
+        <button class="btn" data-co-switch="report-labor-cost">${icon("building")}<span>고객사 변경</span></button>
+      </div>
+
+      <div class="itabs">
+        <div class="itab ${itab === "monthly" ? "active" : ""}" data-itab="monthly">월별 현황</div>
+        <div class="itab ${itab === "by-dept" ? "active" : ""}" data-itab="by-dept">부서별 현황</div>
+        <div class="itab ${itab === "trend" ? "active" : ""}" data-itab="trend">연간 추이</div>
+      </div>
+      ${panel}
+    `,
+    toolbar: `
+      <div class="group">
+        ${tbtn("이전", "chevL", "data-go-back='1'")}
+      </div>
+      <div class="spacer"></div>
+      <div class="group">
+        ${tbtn("CSV 내보내기", "download", "data-act='excel'")}
       </div>
     `,
   };

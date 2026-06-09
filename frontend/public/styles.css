@@ -1144,3 +1144,12 @@ input, select, textarea { font-family: inherit; font-size: 12px; }
 .muted { color: var(--text-muted); }
 .strong { font-weight: 700; color: #1f3a5c; }
 .cur::after { content: " 원"; color: var(--text-muted); font-size: 0.9em; }
+
+@media print {
+  .gnb,.sidebar,.tab-strip,.toolbar,button,[data-act],[data-new-run],[data-go-back],
+  .search-strip .btn,.wf-step,.wf-arrow,.modal-backdrop { display:none!important; }
+  .main { margin:0!important; padding:0!important; }
+  .app { display:block!important; }
+  .content { padding:8px!important; }
+  .dt { font-size:11px; } .dt td,.dt th { padding:4px 6px; }
+}

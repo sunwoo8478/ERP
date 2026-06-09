@@ -13,9 +13,9 @@ export interface Company {
 
 export interface OrgUnit {
   orgUnitId: string
-  orgUnitCode: string
   orgUnitName: string
   parentOrgUnitId: string | null
+  activeFlag: boolean
 }
 
 export interface JobGrade {
@@ -30,12 +30,15 @@ export interface Employee {
   employeeNo: string
   fullName: string
   gradeName: string
+  jobGradeId: string
   currentStep: number
   orgUnitName: string
+  orgUnitId: string
   hireDate: string
   status: string
   dependentCount: number
   employmentType: string
+  hasOwnCar: boolean
 }
 
 export interface PayrollRun {

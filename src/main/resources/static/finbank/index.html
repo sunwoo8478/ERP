@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>핀뱅크</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #f0f5ff; color: #1a1a2e;
+    padding-top: max(env(safe-area-inset-top), 20px);
+    padding-bottom: env(safe-area-inset-bottom);
+    min-height: 100vh;
+  }
+
+  /* ─── 헤더 ─── */
+  .app-header {
+    background: #fff; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #e8eeff;
+    box-shadow: 0 1px 4px rgba(0,102,204,.06);
+  }
+  .header-logo { font-size: 18px; font-weight: 800; color: #0055bb; letter-spacing: -.3px; }
+  .header-right { font-size: 13px; color: #888; }
+
+  /* ─── 로그인 ─── */
+  #login-screen {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px;
+  }
+  .login-logo { font-size: 60px; margin-bottom: 16px; }
+  .login-title { font-size: 26px; font-weight: 800; color: #0055bb; margin-bottom: 6px; }
+  .login-sub { font-size: 14px; color: #888; margin-bottom: 36px; text-align: center; line-height: 1.5; }
+  .field { width: 100%; margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; letter-spacing: .3px; }
+  .field input {
+    width: 100%; padding: 15px 16px;
+    border: 1.5px solid #cce0ff; border-radius: 14px;
+    font-size: 16px; outline: none; background: #f5f9ff; color: #1a1a2e;
+    transition: all .2s;
+  }
+  .field input:focus { border-color: #0055bb; background: #fff; box-shadow: 0 0 0 3px rgba(0,85,187,.08); }
+  .btn-login {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, #0066cc, #0044aa);
+    color: #fff; border: none; border-radius: 14px;
+    font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0,102,204,.35);
+    transition: opacity .2s;
+  }
+  .btn-login:disabled { opacity: .6; cursor: default; }
+  .login-error {
+    display: none; margin-top: 14px; padding: 12px 16px;
+    background: #fff0f0; border-radius: 10px;
+    color: #c0392b; font-size: 13px; text-align: center; width: 100%;
+  }
+  .login-hint { margin-top: 20px; font-size: 12px; color: #aaa; text-align: center; }
+
+  /* ─── 메인 ─── */
+  #main-screen { display: none; }
+
+  /* 계좌 카드 */
+  .account-card {
+    margin: 16px; border-radius: 22px;
+    background: linear-gradient(135deg, #0066cc 0%, #0033aa 100%);
+    padding: 26px 24px; color: #fff;
+    box-shadow: 0 10px 30px rgba(0,102,204,.4);
+    position: relative; overflow: hidden;
+  }
+  .account-card::before {
+    content: ''; position: absolute; right: -30px; top: -30px;
+    width: 150px; height: 150px; border-radius: 50%;
+    background: rgba(255,255,255,.08);
+  }
+  .account-card::after {
+    content: ''; position: absolute; right: 40px; bottom: -40px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,.05);
+  }
+  .card-bank { font-size: 13px; opacity: .8; margin-bottom: 2px; }
+  .card-type { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+  .card-acct { font-family: 'Courier New', monospace; font-size: 14px; opacity: .75; letter-spacing: 1.5px; margin-bottom: 20px; }
+  .card-balance-label { font-size: 11px; opacity: .7; margin-bottom: 5px; }
+  .card-balance { font-size: 32px; font-weight: 800; letter-spacing: -1.5px; }
+  .card-owner { font-size: 13px; opacity: .8; margin-top: 16px; }
+
+  /* 퀵 버튼 */
+  .quick-btns { display: flex; gap: 10px; margin: 0 16px 16px; }
+  .quick-btn {
+    flex: 1; background: #fff; border-radius: 14px; padding: 14px 8px;
+    text-align: center; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    transition: transform .1s;
+  }
+  .quick-btn:active { transform: scale(.96); }
+  .quick-btn .qi { font-size: 22px; margin-bottom: 5px; }
+  .quick-btn span { font-size: 11px; font-weight: 600; color: #444; }
+
+  /* 거래 목록 */
+  .section-hd {
+    padding: 6px 20px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section-hd .title { font-size: 15px; font-weight: 700; }
+  .section-hd .more { font-size: 12px; color: #0055bb; }
+
+  .tx-list { padding: 0 16px; }
+  .tx-item {
+    background: #fff; border-radius: 0; padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px; cursor: pointer;
+    border-bottom: 1px solid #f0f0f5; transition: background .1s;
+  }
+  .tx-item:first-child { border-radius: 16px 16px 0 0; border-bottom: 1px solid #f0f0f5; }
+  .tx-item:last-child  { border-radius: 0 0 16px 16px; border-bottom: none; }
+  .tx-item:only-child  { border-radius: 16px; border: none; }
+  .tx-item:active { background: #f5f9ff; }
+  .tx-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .tx-icon.new { background: #fff3e6; }
+  .tx-icon.old { background: #e8f5e9; }
+  .tx-info { flex: 1; }
+  .tx-desc { font-size: 14px; font-weight: 600; }
+  .tx-date { font-size: 12px; color: #888; margin-top: 3px; }
+  .tx-amounts { text-align: right; }
+  .tx-amount { font-size: 15px; font-weight: 700; color: #0055bb; }
+  .tx-balance { font-size: 11px; color: #aaa; margin-top: 3px; }
+  .badge-new {
+    display: inline-block; background: #ff6b00; color: #fff;
+    font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 8px; margin-left: 5px; vertical-align: middle;
+  }
+  .empty-tx { padding: 50px 20px; text-align: center; color: #aaa; font-size: 14px; }
+
+  /* ─── 거래 상세 ─── */
+  #detail-screen { display: none; }
+  .detail-header {
+    background: #fff; padding: 14px 20px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #eee;
+  }
+  .btn-back { background: none; border: none; font-size: 22px; color: #0055bb; cursor: pointer; padding: 0 8px 0 0; }
+  .detail-header-title { font-size: 16px; font-weight: 700; }
+
+  .detail-body { padding: 16px 16px 40px; }
+  .deposit-card {
+    background: linear-gradient(135deg, #0066cc, #0033aa);
+    border-radius: 18px; padding: 26px; color: #fff;
+    text-align: center; margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(0,102,204,.35);
+  }
+  .deposit-label { font-size: 13px; opacity: .8; margin-bottom: 8px; }
+  .deposit-amount { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; }
+  .deposit-date { font-size: 13px; opacity: .7; margin-top: 8px; }
+
+  .info-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+  .info-card-title { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 12px; letter-spacing: .3px; }
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #f5f5f7;
+  }
+  .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .info-key { font-size: 13px; color: #888; }
+  .info-val { font-size: 13px; font-weight: 600; text-align: right; }
+  .info-val.blue { color: #0055bb; font-size: 15px; font-weight: 700; }
+  .info-val.red  { color: #e74c3c; }
+
+  .btn-slip {
+    width: 100%; padding: 15px; background: #0055bb; color: #fff;
+    border: none; border-radius: 14px; font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,85,187,.3);
+  }
+</style>
+</head>
+<body>
+
+<!-- 앱 헤더 -->
+<div class="app-header">
+  <div class="header-logo">🏦 핀뱅크</div>
+  <div class="header-right" id="header-name"></div>
+</div>
+
+<!-- 로그인 -->
+<div id="login-screen">
+  <div class="login-logo">🏦</div>
+  <div class="login-title">핀뱅크</div>
+  <div class="login-sub">페이핏 계정으로 로그인하면<br>급여 입금 내역을 확인할 수 있습니다</div>
+  <div class="field">
+    <label>회사코드</label>
+    <input id="inp-code" type="text" placeholder="예: MYJI" autocapitalize="characters" autocomplete="off"
+      onkeydown="if(event.key==='Enter') document.getElementById('inp-no').focus()">
+  </div>
+  <div class="field">
+    <label>사번</label>
+    <input id="inp-no" type="text" placeholder="예: M001" autocomplete="off"
+      onkeydown="if(event.key==='Enter') doLogin()">
+  </div>
+  <button class="btn-login" id="login-btn" onclick="doLogin()">로그인</button>
+  <div class="login-error" id="login-err"></div>
+  <div class="login-hint">회사코드와 사번은 인사담당자에게 문의하세요</div>
+</div>
+
+<!-- 메인 -->
+<div id="main-screen">
+  <div class="account-card" id="account-card"></div>
+  <div class="quick-btns">
+    <div class="quick-btn"><div class="qi">📋</div><span>내역</span></div>
+    <div class="quick-btn"><div class="qi">💸</div><span>이체</span></div>
+    <div class="quick-btn"><div class="qi">📊</div><span>통계</span></div>
+    <div class="quick-btn"><div class="qi">⚙️</div><span>관리</span></div>
+  </div>
+  <div class="section-hd">
+    <span class="title">입출금 내역</span>
+    <span class="more">전체보기</span>
+  </div>
+  <div class="tx-list" id="tx-list"></div>
+</div>
+
+<!-- 거래 상세 -->
+<div id="detail-screen">
+  <div class="detail-header">
+    <button class="btn-back" onclick="goMain()">‹</button>
+    <div class="detail-header-title">거래 상세</div>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<script>
+var S = { emp: null, bank: null };
+
+async function api(method, path, body) {
+  var opt = { method: method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opt.body = JSON.stringify(body);
+  var res = await fetch('/api/portal' + path, opt);
+  var json = await res.json();
+  if (!json.success) throw new Error(json.message || '오류가 발생했습니다');
+  return json.data;
+}
+
+function won(n) { return '₩ ' + Number(n).toLocaleString('ko-KR'); }
+function show(id) {
+  ['login-screen','main-screen','detail-screen'].forEach(function(s) {
+    document.getElementById(s).style.display = s === id ? 'block' : 'none';
+  });
+}
+
+async function doLogin() {
+  var code = document.getElementById('inp-code').value.trim().toUpperCase();
+  var no   = document.getElementById('inp-no').value.trim();
+  var err  = document.getElementById('login-err');
+  var btn  = document.getElementById('login-btn');
+  err.style.display = 'none';
+  if (!code || !no) {
+    err.textContent = '회사코드와 사번을 입력해 주세요.';
+    err.style.display = 'block'; return;
+  }
+  btn.disabled = true; btn.textContent = '로그인 중...';
+  try {
+    S.emp  = await api('POST', '/login', { companyCode: code, employeeNo: no });
+    S.bank = await api('GET', '/' + S.emp.employeeId + '/bank-account');
+    document.getElementById('header-name').textContent = S.emp.fullName + '님';
+    renderMain();
+    show('main-screen');
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '로그인';
+  }
+}
+
+function renderMain() {
+  var b = S.bank;
+  var acct = (b.accountNo && b.accountNo !== '계좌 미등록')
+    ? b.accountNo : '계좌번호를 등록해 주세요';
+
+  document.getElementById('account-card').innerHTML =
+    '<div class="card-bank">' + b.bankName + '</div>' +
+    '<div class="card-type">급여계좌</div>' +
+    '<div class="card-acct">' + acct + '</div>' +
+    '<div class="card-balance-label">입금 누계</div>' +
+    '<div class="card-balance">' + won(b.balance) + '</div>' +
+    '<div class="card-owner">' + b.ownerName + ' · ' + b.companyName + '</div>';
+
+  var el = document.getElementById('tx-list');
+  if (!b.transactions || !b.transactions.length) {
+    el.innerHTML = '<div class="empty-tx">아직 입금 내역이 없습니다.<br>급여 지급 후 여기서 확인하세요 💚</div>';
+    return;
+  }
+  el.innerHTML = b.transactions.map(function(tx, i) {
+    var isNew = i === 0;
+    return '<div class="tx-item" onclick="openTx(\'' + tx.txId + '\')">' +
+      '<div class="tx-icon ' + (isNew ? 'new' : 'old') + '">' + (isNew ? '🆕' : '💚') + '</div>' +
+      '<div class="tx-info">' +
+        '<div class="tx-desc">' + tx.description + (isNew ? '<span class="badge-new">NEW</span>' : '') + '</div>' +
+        '<div class="tx-date">' + tx.date + ' 지급</div>' +
+      '</div>' +
+      '<div class="tx-amounts">' +
+        '<div class="tx-amount">+' + Number(tx.amount).toLocaleString('ko-KR') + '원</div>' +
+        '<div class="tx-balance">잔액 ' + Number(tx.balance).toLocaleString('ko-KR') + '원</div>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function openTx(txId) {
+  var tx = S.bank.transactions.find(function(t) { return t.txId === txId; });
+  if (!tx) return;
+  var slip = null;
+  if (tx.payrollSlipId && S.emp) {
+    try { slip = await api('GET', '/' + S.emp.employeeId + '/slips/' + tx.payrollSlipId); } catch(e) {}
+  }
+  renderDetail(tx, slip);
+  show('detail-screen');
+}
+
+function renderDetail(tx, slip) {
+  var html =
+    '<div class="deposit-card">' +
+      '<div class="deposit-label">💚 급여 입금</div>' +
+      '<div class="deposit-amount">+' + Number(tx.amount).toLocaleString('ko-KR') + '원</div>' +
+      '<div class="deposit-date">' + tx.date + '</div>' +
+    '</div>' +
+    '<div class="info-card">' +
+      '<div class="info-card-title">거래 정보</div>' +
+      '<div class="info-row"><span class="info-key">거래처</span><span class="info-val">' + tx.description + '</span></div>' +
+      '<div class="info-row"><span class="info-key">입금일</span><span class="info-val">' + tx.date + '</span></div>' +
+      '<div class="info-row"><span class="info-key">입금액</span><span class="info-val blue">+' + Number(tx.amount).toLocaleString('ko-KR') + '원</span></div>' +
+      '<div class="info-row"><span class="info-key">거래후잔액</span><span class="info-val">' + Number(tx.balance).toLocaleString('ko-KR') + '원</span></div>' +
+    '</div>';
+
+  if (slip) {
+    var earnHtml = slip.earnings.map(function(i) {
+      return '<div class="info-row"><span class="info-key">' + i.itemName + '</span><span class="info-val">' + Number(i.amount).toLocaleString('ko-KR') + '원</span></div>';
+    }).join('');
+    var deductHtml = slip.deductions.map(function(i) {
+      return '<div class="info-row"><span class="info-key">' + i.itemName + '</span><span class="info-val red">-' + Number(i.amount).toLocaleString('ko-KR') + '원</span></div>';
+    }).join('');
+    html +=
+      '<div class="info-card">' +
+        '<div class="info-card-title">지급 내역</div>' +
+        earnHtml +
+        '<div class="info-row"><span class="info-key">총 지급</span><span class="info-val">' + Number(slip.grossAmount).toLocaleString('ko-KR') + '원</span></div>' +
+      '</div>' +
+      '<div class="info-card">' +
+        '<div class="info-card-title">공제 내역</div>' +
+        deductHtml +
+        '<div class="info-row"><span class="info-key">공제 합계</span><span class="info-val red">-' + Number(slip.deductionAmount).toLocaleString('ko-KR') + '원</span></div>' +
+      '</div>' +
+      '<div class="info-card">' +
+        '<div class="info-row"><span class="info-key">비과세</span><span class="info-val">' + Number(slip.nonTaxableAmount).toLocaleString('ko-KR') + '원</span></div>' +
+        '<div class="info-row"><span class="info-key">과세표준</span><span class="info-val">' + Number(slip.taxableIncome).toLocaleString('ko-KR') + '원</span></div>' +
+        '<div class="info-row"><span class="info-key">실수령액</span><span class="info-val blue">+' + Number(slip.netAmount).toLocaleString('ko-KR') + '원</span></div>' +
+      '</div>';
+  }
+  document.getElementById('detail-body').innerHTML = html;
+}
+
+function goMain() { show('main-screen'); }
+
+show('login-screen');
+</script>
+</body>
+</html>

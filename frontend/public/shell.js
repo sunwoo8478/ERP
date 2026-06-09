@@ -113,7 +113,13 @@ function openModal({ title, body, footer, onClose }) {
     else if (footer instanceof HTMLElement) footEl.appendChild(footer);
   }
   function close() { backdrop.remove(); window.removeEventListener("keydown", esc); onClose?.(); }
-  function esc(e) { if (e.key === "Escape") close(); }
+  function esc(e) {
+    if (e.key === "Escape") { close(); return; }
+    if (e.key === "Enter" && !e.shiftKey && document.activeElement?.tagName !== "TEXTAREA") {
+      const okBtn = modal.querySelector("[data-modal-ok]");
+      if (okBtn && !okBtn.disabled) { e.preventDefault(); okBtn.click(); }
+    }
+  }
   window.addEventListener("keydown", esc);
   modal.querySelector(".x").addEventListener("click", close);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
@@ -174,15 +180,19 @@ function renderGNB(active) {
         <div class="pill"><b>26기</b> 2026</div>
         <div class="pill">5월</div>
       </div>
+      <div class="gnb-search" style="position:relative;margin-right:8px">
+        <input id="gnb-search-input" placeholder="회사명·직원명 검색..." autocomplete="off" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:20px;padding:6px 14px;color:#fff;width:200px;font-size:13px;outline:none"/>
+        <div id="gnb-search-dropdown" style="display:none;position:absolute;top:38px;left:0;width:320px;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:9999;overflow:hidden"></div>
+      </div>
       <div class="gnb-icons">${items}</div>
       <div class="gnb-right">
         <button class="btn ghost" title="알림" style="padding:0 6px">${ICONS.bell}</button>
-        <button class="btn ghost" title="환경설정" style="padding:0 6px">${ICONS.gear}</button>
+        <button class="btn ghost" title="로그아웃" style="padding:0 6px" onclick="(function(){if(confirm('로그아웃 하시겠습니까?')){AUTH.clear();showLoginScreen();}})()">⏻</button>
         <div class="user">
-          <div class="user-avatar">박</div>
+          <div class="user-avatar">${(window.AUTH?.user?.fullName || '관')[0]}</div>
           <div style="line-height:1.2">
-            <div style="font-weight:600">박지원</div>
-            <div style="font-size:10px;color:var(--text-muted)">운영팀 · 매니저</div>
+            <div style="font-weight:600">${window.AUTH?.user?.fullName || '관리자'}</div>
+            <div style="font-size:10px;color:var(--text-muted)">${window.AUTH?.user?.role || 'ADMIN'}</div>
           </div>
         </div>
       </div>
@@ -219,6 +229,8 @@ const SIDEBAR_TREE = [
       { key: "emp-org",    label: "조직도 관리",     ico: "doc", route: { name: "org-units" } },
       { key: "emp-grade",  label: "직급/호봉 관리",  ico: "doc", route: { name: "job-grades" } },
       { key: "emp-leave",  label: "입퇴사 처리",     ico: "doc2",route: { name: "hr-leave" } },
+      { key: "hr-attendance", label: "근태 관리",       ico: "doc", route: { name: "hr-attendance" } },
+      { key: "hr-step",    label: "호봉 승급 처리",   ico: "doc", route: { name: "hr-step-increment" } },
     ],
   },
   {
@@ -227,7 +239,9 @@ const SIDEBAR_TREE = [
     items: [
       { key: "pr-run",    label: "급여 실행",        ico: "doc",  route: { name: "payroll-runs" } },
       { key: "pr-slips",  label: "급여명세 조회",    ico: "doc",  route: { name: "payroll-slips" } },
-      { key: "pr-items",  label: "급여항목 마스터",  ico: "doc",  route: { name: "payroll-items" } },
+      { key: "pr-allowance", label: "수당항목 마스터",  ico: "doc",  route: { name: "payroll-allowance-items" } },
+      { key: "pr-withholding", label: "원천세 신고서", ico: "doc",  route: { name: "payroll-withholding" } },
+      { key: "pr-yearend",  label: "연말정산 기초",   ico: "doc",  route: { name: "payroll-year-end" } },
       { key: "pr-tax",    label: "비과세 한도 관리", ico: "doc",  route: { name: "payroll-tax" } },
       { key: "pr-rates",  label: "4대보험 요율",     ico: "doc",  route: { name: "insurance-rates" } },
     ],
@@ -238,6 +252,13 @@ const SIDEBAR_TREE = [
     items: [
       { key: "tx-withhold", label: "원천세 신고",    ico: "doc2", route: { name: "payroll-runs" } },
       { key: "tx-eoy",      label: "연말정산",       ico: "doc2", route: { name: "payroll-runs" } },
+    ],
+  },
+  {
+    title: "인건비 분석",
+    open: false,
+    items: [
+      { key: "rpt-labor", label: "인건비 통계", ico: "doc", route: { name: "report-labor-cost" } },
     ],
   },
   {
@@ -316,6 +337,7 @@ const APP = {
   activeTabId: null,
   activeGnb: "payroll",
   activeTree: "pr-run",
+  selectedCompanyId: null,
 };
 
 function tabIdFor(route) {
@@ -357,6 +379,10 @@ function tabTitleFor(route) {
       return c ? `급여명세 · ${c.companyName}` : "급여명세 조회";
     }
     case "payroll-slip-detail": return "급여명세서";
+    case "payroll-ledger": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `급여대장 · ${c.companyName}` : "급여 대장";
+    }
     case "org-units": {
       const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
       return c ? `조직도 · ${c.companyName}` : "조직도 관리";
@@ -381,40 +407,67 @@ function tabTitleFor(route) {
       const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
       return c ? `입퇴사 · ${c.companyName}` : "입퇴사 처리";
     }
+    case "hr-attendance": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `근태 · ${c.companyName}` : "근태 관리";
+    }
+    case "hr-step-increment": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `호봉승급 · ${c.companyName}` : "호봉 승급 처리";
+    }
+    case "payroll-withholding": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `원천세 · ${c.companyName}` : "원천세 신고서";
+    }
+    case "payroll-year-end": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `연말정산 · ${c.companyName}` : "연말정산 기초";
+    }
+    case "payroll-allowance-items": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `수당항목 · ${c.companyName}` : "수당항목 마스터";
+    }
+    case "report-labor-cost": {
+      const c = route.companyId ? MOCK.companies.find(x => x.companyId === route.companyId) : null;
+      return c ? `인건비통계 · ${c.companyName}` : "인건비 통계";
+    }
     default: return "문서";
   }
 }
 
 function openTab(route, opts = {}) {
-  // Route normalization — when "companies" with companyId becomes company-detail, etc.
-  if (route.name === "companies" && route.companyId) route = { ...route, name: "company-detail" };
-  if (route.name === "employees" && !route.companyId) {
-    // Need to pick a company first — open the picker
-    route = { ...route, name: "employees", needsPicker: true };
+  // ── 고객사 컨텍스트 자동 주입 ──────────────────────────────────────────
+  // companyId가 아예 필요 없는 페이지 (목록·글로벌 페이지)
+  const GLOBAL_ROUTES = new Set([
+    "dashboard", "companies", "payroll-slip-detail", "employee-detail"
+  ]);
+  // companyId가 있어야 동작하는 페이지 (없으면 picker)
+  const NEEDS_COMPANY_ROUTES = new Set([
+    "employees", "payroll-runs", "payroll-slips", "payroll-ledger",
+    "org-units", "job-grades", "insurance-rates", "payroll-items",
+    "payroll-tax", "hr-leave", "hr-attendance", "hr-step-increment",
+    "payroll-withholding", "payroll-year-end", "payroll-allowance-items",
+    "report-labor-cost", "company-detail"
+  ]);
+
+  if (NEEDS_COMPANY_ROUTES.has(route.name)) {
+    if (!route.companyId && APP.selectedCompanyId) {
+      // 마지막으로 선택한 고객사 자동 적용 → picker 불필요
+      route = { ...route, companyId: APP.selectedCompanyId, needsPicker: false };
+    } else if (!route.companyId) {
+      // 선택된 고객사도 없으면 picker 표시
+      route = { ...route, needsPicker: true };
+    }
   }
-  if (route.name === "payroll-runs" && !route.companyId) {
-    route = { ...route, name: "payroll-runs", needsPicker: true };
+
+  // 고객사 선택 시 컨텍스트 저장
+  if (route.companyId && !GLOBAL_ROUTES.has(route.name)) {
+    APP.selectedCompanyId = route.companyId;
   }
-  if (route.name === "payroll-slips" && !route.companyId) {
-    route = { ...route, name: "payroll-slips", needsPicker: true };
-  }
-  if (route.name === "org-units" && !route.companyId) {
-    route = { ...route, needsPicker: true };
-  }
-  if (route.name === "job-grades" && !route.companyId) {
-    route = { ...route, needsPicker: true };
-  }
-  if (route.name === "insurance-rates" && !route.companyId) {
-    route = { ...route, needsPicker: true };
-  }
-  if (route.name === "payroll-items" && !route.companyId) {
-    route = { ...route, needsPicker: true };
-  }
-  if (route.name === "payroll-tax" && !route.companyId) {
-    route = { ...route, needsPicker: true };
-  }
-  if (route.name === "hr-leave" && !route.companyId) {
-    route = { ...route, needsPicker: true };
+
+  // companies + companyId → 상세 페이지로
+  if (route.name === "companies" && route.companyId) {
+    route = { ...route, name: "company-detail" };
   }
 
   const id = tabIdFor(route);
@@ -439,6 +492,12 @@ function openTab(route, opts = {}) {
   else if (route.name === "insurance-rates") APP.activeTree = "pr-rates";
   else if (route.name === "payroll-items") APP.activeTree = "pr-items";
   else if (route.name === "payroll-tax") APP.activeTree = "pr-tax";
+  else if (route.name === "hr-attendance") APP.activeTree = "hr-attendance";
+  else if (route.name === "hr-step-increment") APP.activeTree = "hr-step";
+  else if (route.name === "payroll-withholding") APP.activeTree = "pr-withholding";
+  else if (route.name === "payroll-year-end") APP.activeTree = "pr-yearend";
+  else if (route.name === "payroll-allowance-items") APP.activeTree = "pr-allowance";
+  else if (route.name === "report-labor-cost") APP.activeTree = "rpt-labor";
   renderApp();
 }
 
@@ -535,6 +594,36 @@ function renderBreadcrumb(route) {
     case "hr-leave": {
       const c = MOCK.companies.find(x => x.companyId === route.companyId);
       crumbs.push("조직/인사", "입퇴사 처리", c?.companyName || "고객사 선택");
+      break;
+    }
+    case "hr-attendance": {
+      const c = MOCK.companies.find(x => x.companyId === route.companyId);
+      crumbs.push("조직/인사", "근태 관리", c?.companyName || "고객사 선택");
+      break;
+    }
+    case "hr-step-increment": {
+      const c = MOCK.companies.find(x => x.companyId === route.companyId);
+      crumbs.push("조직/인사", "호봉 승급 처리", c?.companyName || "고객사 선택");
+      break;
+    }
+    case "payroll-withholding": {
+      const c = MOCK.companies.find(x => x.companyId === route.companyId);
+      crumbs.push("급여 관리", "원천세 신고서", c?.companyName || "고객사 선택");
+      break;
+    }
+    case "payroll-year-end": {
+      const c = MOCK.companies.find(x => x.companyId === route.companyId);
+      crumbs.push("급여 관리", "연말정산 기초", c?.companyName || "고객사 선택");
+      break;
+    }
+    case "payroll-allowance-items": {
+      const c = MOCK.companies.find(x => x.companyId === route.companyId);
+      crumbs.push("급여 관리", "수당항목 마스터", c?.companyName || "고객사 선택");
+      break;
+    }
+    case "report-labor-cost": {
+      const c = MOCK.companies.find(x => x.companyId === route.companyId);
+      crumbs.push("인건비 분석", "인건비 통계", c?.companyName || "고객사 선택");
       break;
     }
   }

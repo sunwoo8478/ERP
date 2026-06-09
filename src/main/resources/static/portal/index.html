@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>페이핏 급여포털</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #eef2ff;
+      font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      color: #1a1a2e;
+    }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; }
+
+    /* ─── LOGIN ─── */
+    #screen-login {
+      display: flex; flex-direction: column; justify-content: center;
+      align-items: center; min-height: 100vh; padding: 32px 24px;
+    }
+    .login-icon { font-size: 52px; margin-bottom: 16px; }
+    .login-title { font-size: 24px; font-weight: 800; color: #1a73e8; margin-bottom: 6px; }
+    .login-subtitle { font-size: 14px; color: #888; margin-bottom: 32px; }
+    .login-card {
+      width: 100%; background: #fff; border-radius: 20px;
+      padding: 28px 24px; box-shadow: 0 4px 24px rgba(26,115,232,.12);
+    }
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; }
+    .input-group input {
+      width: 100%; padding: 13px 16px; border: 1.5px solid #e0e7ff; border-radius: 12px;
+      font-size: 15px; outline: none; transition: border-color .2s;
+      background: #f8faff;
+    }
+    .input-group input:focus { border-color: #1a73e8; background: #fff; }
+    .btn-login {
+      width: 100%; padding: 15px; background: linear-gradient(135deg, #1a73e8, #0d47a1);
+      color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+      cursor: pointer; margin-top: 4px; transition: opacity .2s;
+    }
+    .btn-login:hover { opacity: .9; }
+    .btn-login:disabled { opacity: .6; cursor: default; }
+    .login-error {
+      display: none; color: #e74c3c; font-size: 13px; text-align: center;
+      margin-top: 12px; padding: 10px; background: #fff5f5; border-radius: 8px;
+    }
+    .login-footer { margin-top: 20px; font-size: 12px; color: #aaa; text-align: center; }
+
+    /* ─── MAIN ─── */
+    #screen-main { display: none; padding-bottom: 32px; }
+    .main-header {
+      background: #fff; padding: 16px 20px; display: flex; align-items: center;
+      justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .main-header-title { font-size: 17px; font-weight: 700; }
+    .notif-btn {
+      position: relative; background: none; border: none; font-size: 22px;
+      cursor: pointer; padding: 4px;
+    }
+    .notif-badge {
+      position: absolute; top: 0; right: 0; background: #e74c3c; color: #fff;
+      border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: 700;
+      display: none; align-items: center; justify-content: center;
+    }
+    .profile-section { padding: 16px 20px 0; }
+    .profile-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .profile-info { font-size: 13px; color: #888; }
+    .hero-card {
+      margin: 16px 20px; border-radius: 20px;
+      background: linear-gradient(135deg, #1a73e8, #0d47a1);
+      padding: 24px; color: #fff; min-height: 140px;
+    }
+    .section-title { padding: 16px 20px 8px; font-size: 15px; font-weight: 700; }
+    .slip-list { padding: 0 20px; }
+    .slip-item {
+      background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 14px; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: transform .1s;
+    }
+    .slip-item:active { transform: scale(.98); }
+    .slip-icon {
+      width: 44px; height: 44px; border-radius: 50%; background: #e6f4ea;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .slip-info { flex: 1; }
+    .slip-name { font-weight: 600; font-size: 14px; }
+    .slip-date { color: #888; font-size: 12px; margin-top: 2px; }
+    .slip-amount { text-align: right; }
+    .slip-net { color: #00b386; font-weight: 700; font-size: 15px; }
+    .slip-gross { color: #aaa; font-size: 11px; }
+    .badge-new {
+      background: #e8f0fe; color: #1a73e8; font-size: 10px;
+      padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;
+    }
+    .btn-logout {
+      display: block; width: calc(100% - 40px); margin: 20px auto 0;
+      padding: 13px; background: none; border: 1.5px solid #e0e0e0;
+      border-radius: 12px; font-size: 14px; color: #888; cursor: pointer;
+    }
+
+    /* ─── SLIP DETAIL ─── */
+    #screen-slip { display: none; }
+    .slip-header {
+      background: #fff; padding: 16px 20px; display: flex; align-items: center;
+      justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .slip-header-title { font-size: 16px; font-weight: 700; }
+    .btn-back, .btn-print {
+      background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px;
+    }
+    #slip-content { padding: 16px 20px 40px; }
+    .slip-info-card {
+      background: #f8f9fa; border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .slip-emp-name { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .slip-emp-info { font-size: 13px; color: #888; }
+    .net-card {
+      background: linear-gradient(135deg, #00b386, #00875a);
+      border-radius: 16px; padding: 24px; color: #fff; text-align: center; margin-bottom: 16px;
+    }
+    .net-label { font-size: 13px; opacity: .8; margin-bottom: 6px; }
+    .net-amount { font-size: 38px; font-weight: 800; letter-spacing: -1px; }
+    .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .items-card { background: #fff; border-radius: 14px; padding: 14px; }
+    .items-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .item-row {
+      display: flex; justify-content: space-between; font-size: 12px;
+      margin-bottom: 6px; color: #555;
+    }
+    .item-row.total {
+      border-top: 1px solid #eee; margin-top: 8px; padding-top: 8px;
+      font-weight: 700; font-size: 13px; color: #1a1a2e;
+    }
+    .deduct-color { color: #e74c3c !important; }
+    .slip-summary-row {
+      background: #fff; border-radius: 14px; padding: 14px;
+      display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #888;
+    }
+
+    /* ─── NOTIFICATION PANEL ─── */
+    #notif-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.4); z-index: 100;
+    }
+    #notif-panel {
+      position: fixed; right: 0; top: 0; height: 100%; width: 320px;
+      background: #fff; z-index: 101; transform: translateX(100%);
+      transition: transform .3s ease; display: flex; flex-direction: column;
+      box-shadow: -4px 0 20px rgba(0,0,0,.15);
+    }
+    .notif-header {
+      padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+    }
+    .notif-header-title { font-size: 16px; font-weight: 700; }
+    .btn-notif-close, .btn-mark-all-read {
+      background: none; border: none; cursor: pointer; font-size: 14px; color: #1a73e8;
+    }
+    #notif-list { flex: 1; overflow-y: auto; }
+    .notif-item {
+      padding: 16px 20px; border-bottom: 1px solid #f5f5f5; cursor: pointer;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .notif-item:hover { background: #f8f9fa; }
+    .notif-item.unread { background: #f0f7ff; }
+    .notif-icon { font-size: 22px; flex-shrink: 0; }
+    .notif-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+    .notif-body { font-size: 12px; color: #888; }
+    .notif-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #1a73e8;
+      flex-shrink: 0; margin-top: 6px;
+    }
+    .notif-empty { padding: 40px 20px; text-align: center; color: #aaa; font-size: 14px; }
+
+    /* ─── PRINT ─── */
+    @media print {
+      #screen-login, #screen-main, .slip-header, #notif-panel, #notif-overlay { display: none !important; }
+      #screen-slip { display: block !important; }
+      #slip-content { padding: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LOGIN -->
+  <div id="screen-login">
+    <div class="login-icon">💰</div>
+    <div class="login-title">페이핏 급여포털</div>
+    <div class="login-subtitle">급여명세서를 언제 어디서나 확인하세요</div>
+    <div class="login-card">
+      <div class="input-group">
+        <label>회사코드</label>
+        <input id="inp-code" type="text" placeholder="예: MYJI" autocomplete="off"
+          onkeydown="if(event.key==='Enter') document.getElementById('inp-no').focus()">
+      </div>
+      <div class="input-group">
+        <label>사번</label>
+        <input id="inp-no" type="text" placeholder="예: M001" autocomplete="off"
+          onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+      <button id="login-btn" class="btn-login" onclick="doLogin()">로그인</button>
+      <div id="login-error" class="login-error"></div>
+    </div>
+    <div class="login-footer">회사코드와 사번은 인사담당자에게 문의하세요</div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="screen-main">
+    <div class="main-header">
+      <div class="main-header-title">급여 내역</div>
+      <button class="notif-btn" onclick="openNotif()">
+        🔔<span id="notif-badge" class="notif-badge"></span>
+      </button>
+    </div>
+    <div class="profile-section">
+      <div class="profile-name" id="emp-name"></div>
+      <div class="profile-info" id="emp-info"></div>
+    </div>
+    <div class="hero-card" id="hero-card"></div>
+    <div class="section-title">급여 이력</div>
+    <div class="slip-list" id="slip-list"></div>
+    <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+  </div>
+
+  <!-- SLIP DETAIL -->
+  <div id="screen-slip">
+    <div class="slip-header">
+      <button class="btn-back" onclick="goBack()">←</button>
+      <div class="slip-header-title">급여명세서</div>
+      <button class="btn-print" onclick="window.print()" title="인쇄">🖨️</button>
+    </div>
+    <div id="slip-content"></div>
+  </div>
+
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif-overlay" onclick="closeNotif()"></div>
+<div id="notif-panel">
+  <div class="notif-header">
+    <button class="btn-notif-close" onclick="closeNotif()">← 닫기</button>
+    <div class="notif-header-title">알림</div>
+    <button class="btn-mark-all-read" onclick="markAllRead()">모두 읽음</button>
+  </div>
+  <div id="notif-list"></div>
+</div>
+
+<script>
+  const STATE = { employee: null, slips: [], notifications: [], prevScreen: 'main' };
+
+  async function callApi(method, path, body) {
+    const opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch('/api/portal' + path, opts);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || '오류가 발생했습니다.');
+    return json.data;
+  }
+
+  function won(n) {
+    return '₩ ' + Number(n).toLocaleString('ko-KR');
+  }
+
+  function showScreen(id) {
+    document.getElementById('screen-login').style.display = id === 'login' ? 'flex' : 'none';
+    document.getElementById('screen-main').style.display  = id === 'main'  ? 'block' : 'none';
+    document.getElementById('screen-slip').style.display  = id === 'slip'  ? 'block' : 'none';
+    if (id !== 'login') STATE.prevScreen = id;
+  }
+
+  function goBack() {
+    showScreen('main');
+  }
+
+  // ── 로그인 ──
+  async function doLogin() {
+    const code = document.getElementById('inp-code').value.trim().toUpperCase();
+    const no   = document.getElementById('inp-no').value.trim();
+    const errEl = document.getElementById('login-error');
+    const btn   = document.getElementById('login-btn');
+
+    errEl.style.display = 'none';
+    if (!code || !no) {
+      errEl.textContent = '회사코드와 사번을 입력해 주세요.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '로그인 중...';
+    try {
+      STATE.employee = await callApi('POST', '/login', { companyCode: code, employeeNo: no });
+      STATE.slips    = await callApi('GET',  '/' + STATE.employee.employeeId + '/slips');
+      STATE.notifications = await callApi('GET', '/' + STATE.employee.employeeId + '/notifications');
+      renderMain();
+      showScreen('main');
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '로그인';
+    }
+  }
+
+  // ── 메인 렌더링 ──
+  function renderMain() {
+    const emp = STATE.employee;
+    document.getElementById('emp-name').textContent = emp.fullName + '님';
+    document.getElementById('emp-info').textContent =
+      emp.companyName + ' | ' + emp.gradeName + ' ' + emp.currentStep + '호봉 | ' + emp.orgUnitName;
+
+    renderHeroCard();
+    renderSlipList();
+    renderNotifBadge();
+  }
+
+  function renderHeroCard() {
+    const el = document.getElementById('hero-card');
+    const s  = STATE.slips[0];
+    if (!s) {
+      el.innerHTML = '<div style="text-align:center;opacity:.7;padding:20px;font-size:14px">아직 급여 내역이 없습니다.</div>';
+      return;
+    }
+    const html = '<div style="font-size:13px;opacity:.8;margin-bottom:8px">'
+      + s.year + '년 ' + s.month + '월 급여</div>'
+      + '<div style="font-size:34px;font-weight:800;letter-spacing:-1px;margin-bottom:4px">' + won(s.netAmount) + '</div>'
+      + '<div style="font-size:12px;opacity:.7;margin-bottom:18px">실수령액</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<span style="font-size:12px;opacity:.8">지급일 ' + s.payDate + '</span>'
+      + '<button onclick="openSlip(\'' + s.payrollSlipId + '\')" '
+      + 'style="background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.5);color:#fff;'
+      + 'padding:7px 16px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:600">'
+      + '명세 보기 →</button></div>';
+    el.innerHTML = html;
+  }
+
+  function renderSlipList() {
+    const el = document.getElementById('slip-list');
+    if (!STATE.slips.length) {
+      el.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;font-size:14px">급여 내역이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = STATE.slips.map(function(s) {
+      const newBadge = s.isNew ? '<span class="badge-new">NEW</span>' : '';
+      return '<div class="slip-item" onclick="openSlip(\'' + s.payrollSlipId + '\')">'
+        + '<div class="slip-icon">💚</div>'
+        + '<div class="slip-info">'
+        + '<div class="slip-name">' + s.year + '년 ' + s.month + '월 급여' + newBadge + '</div>'
+        + '<div class="slip-date">' + s.payDate + ' 지급</div>'
+        + '</div>'
+        + '<div class="slip-amount">'
+        + '<div class="slip-net">+' + Number(s.netAmount).toLocaleString('ko-KR') + '원</div>'
+        + '<div class="slip-gross">총' + Math.round(s.grossAmount / 10000) + '만원</div>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  function renderNotifBadge() {
+    const cnt   = STATE.notifications.filter(function(n) { return !n.isRead; }).length;
+    const badge = document.getElementById('notif-badge');
+    badge.textContent = cnt;
+    badge.style.display = cnt > 0 ? 'flex' : 'none';
+  }
+
+  // ── 명세서 상세 ──
+  async function openSlip(slipId) {
+    try {
+      const slip = await callApi('GET', '/' + STATE.employee.employeeId + '/slips/' + slipId);
+      renderSlipDetail(slip);
+      showScreen('slip');
+    } catch (e) {
+      alert('명세서 로드 오류: ' + e.message);
+    }
+  }
+
+  function renderSlipDetail(slip) {
+    const el = document.getElementById('slip-content');
+
+    // 지급 항목 행
+    const earningRows = slip.earnings.map(function(i) {
+      return '<div class="item-row"><span>' + i.itemName + '</span><span>' + Number(i.amount).toLocaleString('ko-KR') + '</span></div>';
+    }).join('');
+    const earningTotal = '<div class="item-row total"><span>합계</span><span>' + Number(slip.grossAmount).toLocaleString('ko-KR') + '</span></div>';
+
+    // 공제 항목 행
+    const deductRows = slip.deductions.map(function(i) {
+      return '<div class="item-row"><span>' + i.itemName + '</span><span class="deduct-color">-' + Number(i.amount).toLocaleString('ko-KR') + '</span></div>';
+    }).join('');
+    const deductTotal = '<div class="item-row total deduct-color"><span>합계</span><span>-' + Number(slip.deductionAmount).toLocaleString('ko-KR') + '</span></div>';
+
+    el.innerHTML =
+      '<div class="slip-info-card">'
+      + '<div class="slip-emp-name">' + slip.fullName + '</div>'
+      + '<div class="slip-emp-info">' + slip.gradeName + ' ' + slip.currentStep + '호봉 · ' + slip.orgUnitName + ' · 지급일 ' + slip.payDate + '</div>'
+      + '</div>'
+      + '<div class="net-card">'
+      + '<div class="net-label">실수령액</div>'
+      + '<div class="net-amount">' + won(slip.netAmount) + '</div>'
+      + '</div>'
+      + '<div class="items-grid">'
+      + '<div class="items-card">'
+      + '<div class="items-title">💰 지급 항목</div>'
+      + earningRows + earningTotal
+      + '</div>'
+      + '<div class="items-card">'
+      + '<div class="items-title deduct-color">📉 공제 항목</div>'
+      + deductRows + deductTotal
+      + '</div>'
+      + '</div>'
+      + '<div class="slip-summary-row">'
+      + '<span>비과세 ' + Number(slip.nonTaxableAmount).toLocaleString('ko-KR') + '원</span>'
+      + '<span>·</span>'
+      + '<span>과세표준 ' + Number(slip.taxableIncome).toLocaleString('ko-KR') + '원</span>'
+      + '<span>·</span>'
+      + '<span>총지급 ' + Number(slip.grossAmount).toLocaleString('ko-KR') + '원</span>'
+      + '</div>';
+  }
+
+  // ── 알림 ──
+  function openNotif() {
+    renderNotifList();
+    document.getElementById('notif-panel').style.transform = 'translateX(0)';
+    document.getElementById('notif-overlay').style.display = 'block';
+  }
+
+  function closeNotif() {
+    document.getElementById('notif-panel').style.transform = 'translateX(100%)';
+    document.getElementById('notif-overlay').style.display = 'none';
+  }
+
+  function renderNotifList() {
+    const el = document.getElementById('notif-list');
+    if (!STATE.notifications.length) {
+      el.innerHTML = '<div class="notif-empty">알림이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = STATE.notifications.map(function(n) {
+      const unreadClass = n.isRead ? '' : ' unread';
+      const dot = n.isRead ? '' : '<div class="notif-dot"></div>';
+      const clickFn = n.payrollSlipId
+        ? 'openSlip(\'' + n.payrollSlipId + '\');closeNotif();'
+        : 'closeNotif();';
+      return '<div class="notif-item' + unreadClass + '" onclick="' + clickFn + '">'
+        + '<div class="notif-icon">📧</div>'
+        + '<div style="flex:1">'
+        + '<div class="notif-title">' + n.title + '</div>'
+        + (n.body ? '<div class="notif-body">' + n.body + '</div>' : '')
+        + '</div>'
+        + dot + '</div>';
+    }).join('');
+  }
+
+  async function markAllRead() {
+    try {
+      await callApi('POST', '/' + STATE.employee.employeeId + '/notifications/read-all');
+      STATE.notifications.forEach(function(n) { n.isRead = true; });
+      renderNotifBadge();
+      renderNotifList();
+    } catch (e) {
+      alert('오류: ' + e.message);
+    }
+  }
+
+  function doLogout() {
+    STATE.employee = null;
+    STATE.slips    = [];
+    STATE.notifications = [];
+    document.getElementById('inp-code').value = '';
+    document.getElementById('inp-no').value   = '';
+    document.getElementById('login-error').style.display = 'none';
+    showScreen('login');
+  }
+
+  // 초기화
+  showScreen('login');
+</script>
+</body>
+</html>
