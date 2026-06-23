@@ -13,6 +13,16 @@
 
 ![PayFit ERP payroll workflow](s_final.png)
 
+## 빠르게 보기
+
+| 구분 | 내용 |
+| --- | --- |
+| 핵심 도메인 | 회사, 조직, 직원, 근태, 급여 실행, 명세서, 리포트 |
+| 계산 흐름 | 기준급여 → 월할 → 비과세 → 4대보험 → 원천세 → 실지급액 |
+| 백엔드 | Kotlin, Spring Boot, Spring Data JPA, Spring Security |
+| 프런트엔드 | React, TypeScript, Vite, Axios |
+| 문서 | [Architecture](./docs/ARCHITECTURE.md), [Payroll Rules](./docs/PAYROLL_RULES.md), [Operations](./docs/OPERATIONS.md) |
+
 ## 프로젝트 목표
 
 PayFit ERP는 단순 CRUD가 아니라 급여 업무의 상태와 계산 규칙을 중심으로 설계한 프로젝트입니다.
@@ -154,3 +164,11 @@ npm run build
 ## 보안 안내
 
 운영 환경의 인증 정보는 반드시 환경 변수로 주입해야 합니다. 개발 기본값을 운영에 사용하지 말고, 비밀키 교체, DB 접근 제한, 환경별 SMTP 계정 분리를 적용해야 합니다.
+
+## 더 보기
+
+- [아키텍처 문서](./docs/ARCHITECTURE.md)
+- [급여 계산 규칙](./docs/PAYROLL_RULES.md)
+- [운영 체크리스트](./docs/OPERATIONS.md)
+- [기여 가이드](./CONTRIBUTING.md)
+- [보안 안내](./SECURITY.md)
