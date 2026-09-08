@@ -172,3 +172,4 @@ npm run build
 - [운영 체크리스트](./docs/OPERATIONS.md)
 - [기여 가이드](./CONTRIBUTING.md)
 - [보안 안내](./SECURITY.md)
+- [개발 블로그](https://sunwoomjc.tistory.com/) — 다른 프로젝트와 개발 기록
